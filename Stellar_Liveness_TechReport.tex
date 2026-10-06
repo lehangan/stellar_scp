@@ -27,7 +27,7 @@
 
 Tra Nguyen \quad Nguyen Binh Minh \\
 Hanoi University of Science and Technology \\
-6 October 2026 (revised; supersedes the version of 2 October 2026)
+6 October 2026
 
 \subsection*{Summary}
 We analysed 1.2 million network scans of the Stellar public network from May 2019 to October 2026, verified every thin margin period of one hour or more against a full network snapshot, and pulled daily availability for every organization that was ever in the top tier. Safety margins were stable throughout: quorum intersection held in every scan. Liveness margins were not. Four times, one operator changed its quorum set while nothing else changed, and the fault tolerance of the whole network dropped as a side effect, twice from two organization failures to one, for between five hours and 7.5 days. Separately, three of the four organizations that left the top tier over the period (Keybase, Wirex and SatoshiPay; not Whalestack) showed months of degraded validator availability first, and SatoshiPay accounts for ten of the sixteen verified organization outages of an hour or more. A simple availability rule scored across all top tier organizations catches 64\% of outages and removals at least a week ahead, with a median lead of about five months, but only 40\% of its alarms are followed by anything within a year. Availability alone is therefore a weak early warning signal; the configuration side is where a check would have made a difference.
