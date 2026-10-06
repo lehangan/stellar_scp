@@ -20,13 +20,20 @@ Steps
        S1  any validator below 90%, or the organization below 99%      (rule used so far)
        S2  the organization below 99% on at least 3 of the trailing 7 days
        S3  any validator at 10% or less for the whole day, or the organization below 90%
-     Outcomes:
-       OUTAGE   the organization below 75% for a day (six hours or more down) while in the top tier
+     Outcomes (one list, used for every signal):
+       OUTAGE   a verified organization outage of one hour or more, from verify_case.py / verify/report.md
+                (listed in VERIFIED_OUTAGES below)
        REMOVAL  the organization leaves the top tier (last day of membership, if before data end)
-     Signal days are merged into episodes (gap of 7 days or less). For each signal and each
-     window W in {30, 90, 180, 365} days: precision = share of episodes followed by an outcome of
-     that organization within W days; recall = share of outcomes preceded by an episode within W
-     days; lead time = days from the first such episode to the outcome.
+       Outcomes of one organization closer than 7 days are merged into one.
+     Signal days are merged into episodes (gap of 7 days or less). Each episode is classified against
+     the outcomes of its organization within a window W: WARNING if an outcome follows between 7 and W
+     days later; INCIDENT if an outcome falls within a day before to 7 days after the episode start
+     (the episode is the incident itself or too late to help); FALSE ALARM otherwise.
+       precision = WARNING / (WARNING + FALSE ALARM)
+       recall    = share of outcomes preceded by a WARNING episode
+       lead time = days from the earliest WARNING episode to the outcome
+     Validators are dropped from the computation after their last day with any validating time
+     (retired validators that stay listed in quorum sets would otherwise read as 0% forever).
 
 Run:    python tier1_availability.py            from the directory that contains sdf_feasibility/
         python tier1_availability.py --offline  use only cached files (no network), for testing
@@ -54,10 +61,18 @@ RAW = OUT / "raw"
 TIMEOUT = 120
 FIRST_DAY = "2019-05-31"
 END_DAY = None                                             # None = today (UTC)
-WINDOWS = (30, 90, 180, 365)
+WINDOWS = (180, 365)
 EPISODE_GAP_DAYS = 7
-OUTAGE_LEVEL = 0.75                                        # organization availability below this for a day = outage day
 MIN_LEAD = 7                                               # an episode counts as EARLY warning only if it starts this many days before the outcome
+# Verified organization outages of one hour or more (verify/report.md): (organization name contains, day)
+VERIFIED_OUTAGES = [
+    ("Stellar Development Foundation", "2020-04-23"), ("Stellar Development Foundation", "2020-05-10"),
+    ("Stellar Development Foundation", "2021-04-06"), ("LOBSTR", "2021-04-06"),
+    ("Wirex", "2022-07-13"), ("Wirex", "2022-07-26"), ("Wirex", "2022-12-13"),
+    ("SatoshiPay", "2020-05-31"), ("SatoshiPay", "2021-09-01"), ("SatoshiPay", "2021-10-13"),
+    ("SatoshiPay", "2024-02-14"), ("SatoshiPay", "2025-02-18"), ("SatoshiPay", "2025-02-25"),
+    ("SatoshiPay", "2025-02-26"), ("SatoshiPay", "2025-08-22"),
+]
 MIN_DAYS = 30                                              # organizations in the top tier for fewer days are transient and not scored
 OFFLINE = "--offline" in sys.argv
 
@@ -284,9 +299,15 @@ def pull_availability(orgs):
     for oid, o in orgs.items():
         if oid.startswith("node:"):
             continue
-        for y in years:
-            for r in day_stats("organization", oid, y):
-                org_av.setdefault(oid, {})[str(r.get("time"))[:10]] = ratio(r, "isSubQuorumAvailableCount")
+        for src in o.get("ids", [oid]):
+            if src.startswith("node:"):
+                continue
+            for y in years:
+                for r in day_stats("organization", src, y):
+                    d, v = str(r.get("time"))[:10], ratio(r, "isSubQuorumAvailableCount")
+                    cur = org_av.setdefault(oid, {}).get(d)
+                    if v is not None and (cur is None or v > cur):
+                        org_av[oid][d] = v
         for pk in o["validators"]:
             for y in years:
                 for r in day_stats("node", pk, y):
@@ -311,6 +332,10 @@ def days_between(a, b):
 def build_table(orgs, node_av, org_av):
     """-> rows per (org, day in top tier): dict with org availability, min validator availability, signals."""
     end = END_DAY or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    last_up = {}                      # last day on which the validator validated at all
+    for pk, days in node_av.items():
+        ups = [d for d, v in days.items() if v]
+        last_up[pk] = max(ups) if ups else None
     table = {}
     for oid, o in orgs.items():
         if oid.startswith("node:") or len(o["days"]) < MIN_DAYS:
@@ -320,7 +345,8 @@ def build_table(orgs, node_av, org_av):
             if d not in o["days"]:
                 continue
             oa = org_av.get(oid, {}).get(d)
-            vs = [node_av.get(pk, {}).get(d) for pk in o.get("day_pks", {}).get(d, o["validators"])]
+            vs = [node_av.get(pk, {}).get(d) for pk in o.get("day_pks", {}).get(d, o["validators"])
+                  if last_up.get(pk) is not None and d <= last_up[pk]]
             vs = [v for v in vs if v is not None]
             mn = min(vs) if vs else None
             hist.append(oa)
@@ -346,26 +372,26 @@ def crawler_days(table, orgs):
 
 
 def outcomes(table, orgs, bad_days):
-    """-> {oid: [(day, kind)]} with kind OUTAGE or REMOVAL."""
+    """-> {oid: [(day, kind)]}: verified outages of an hour or more plus removals, merged within 7 days."""
     end = END_DAY or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     res = {}
     for oid, o in orgs.items():
-        if oid.startswith("node:") or not o["days"]:
+        if oid.startswith("node:") or len(o["days"]) < MIN_DAYS:
             continue
-        ev = []
-        prev_out = None
-        for d in sorted(o["days"]):
-            r = table.get((oid, d))
-            if not r or d in bad_days or r["org"] is None:
-                continue
-            if r["org"] < OUTAGE_LEVEL:
-                if prev_out is None or days_between(prev_out, d) > EPISODE_GAP_DAYS:
-                    ev.append((d, "OUTAGE"))
-                prev_out = d
+        ev = [(d, "OUTAGE") for name, d in VERIFIED_OUTAGES if name.lower() in o["name"].lower()]
         last = max(o["days"])
-        if days_between(last, end) > 3 and len(o["days"]) >= MIN_DAYS:
+        if days_between(last, end) > 3:
             ev.append((last, "REMOVAL"))
-        res[oid] = ev
+        ev.sort()
+        merged, last_d = [], None
+        for d, k in ev:
+            if merged and days_between(last_d, d) <= EPISODE_GAP_DAYS:
+                if k not in merged[-1][1]:
+                    merged[-1] = (merged[-1][0], merged[-1][1] + "+" + k)
+            else:
+                merged.append((d, k))
+            last_d = d
+        res[oid] = merged
     return res
 
 
@@ -383,26 +409,39 @@ def episodes(table, bad_days, signal):
     return res
 
 
-def score(eps, outs, W, min_lead=0):
-    """precision, recall, lead times for window W (days); an episode must start at least min_lead days before the outcome."""
-    n_ep = tp = 0
+def classify(eps, outs, W):
+    """-> {(oid, start): 'WARNING' | 'INCIDENT' | 'FALSE ALARM'} for window W."""
+    cls = {}
     for oid, lst in eps.items():
-        for s, e, n in lst:
-            n_ep += 1
-            if any(min_lead <= days_between(s, od) <= W for od, _ in outs.get(oid, [])):
-                tp += 1
+        for st, e, n in lst:
+            gaps = [days_between(st, od) for od, _ in outs.get(oid, [])]
+            if any(MIN_LEAD <= g <= W for g in gaps):
+                cls[(oid, st)] = "WARNING"
+            elif any(-1 <= g < MIN_LEAD for g in gaps):
+                cls[(oid, st)] = "INCIDENT"
+            else:
+                cls[(oid, st)] = "FALSE ALARM"
+    return cls
+
+
+def score(eps, outs, W):
+    """precision over warning and false alarm episodes, recall over outcomes, lead times from the earliest warning."""
+    cls = classify(eps, outs, W)
+    warn = sum(1 for v in cls.values() if v == "WARNING")
+    inc = sum(1 for v in cls.values() if v == "INCIDENT")
+    fa = sum(1 for v in cls.values() if v == "FALSE ALARM")
     n_out = hit = 0
     leads = []
     for oid, lst in outs.items():
         for od, kind in lst:
             n_out += 1
-            prior = [s for s, e, n in eps.get(oid, []) if min_lead <= days_between(s, od) <= W]
+            prior = [st for st, e, n in eps.get(oid, []) if MIN_LEAD <= days_between(st, od) <= W]
             if prior:
                 hit += 1
                 leads.append(days_between(min(prior), od))
-    prec = tp / n_ep if n_ep else None
+    prec = warn / (warn + fa) if (warn + fa) else None
     rec = hit / n_out if n_out else None
-    return n_ep, tp, prec, n_out, hit, rec, leads
+    return warn, inc, fa, prec, n_out, hit, rec, leads
 
 
 def pct(x):
@@ -444,12 +483,11 @@ def main():
          f"Run at: {datetime.now().strftime('%Y-%m-%d %H:%M')}" + ("  (OFFLINE: cached files only)" if OFFLINE else ""), "",
          f"{len(real)} organizations were in the top tier at some point; {len(samples)} membership samples; "
          f"{len(table)} organization-days; {len(bad)} crawler outage days excluded.", "",
-         "## Organizations", "", "| Organization | In top tier | Days | Validators | Outage days | Outcomes |", "|---|---|---|---|---|---|"]
+         "## Organizations", "", "| Organization | In top tier | Days | Validators | Verified outages | Outcomes (merged) |", "|---|---|---|---|---|---|"]
     for oid, o in sorted(real.items(), key=lambda kv: min(kv[1]["days"]) if kv[1]["days"] else ""):
         if not o["days"]:
             continue
-        od = sum(1 for d in o["days"] if table.get((oid, d), {}).get("org") is not None
-                 and table[(oid, d)]["org"] < OUTAGE_LEVEL and d not in bad)
+        od = sum(1 for name, d in VERIFIED_OUTAGES if name.lower() in o["name"].lower())
         ev = "; ".join(f"{k} {d}" for d, k in outs.get(oid, [])) or "none"
         nm = o["name"] + (f" (also {', '.join(o.get('aliases', []))})" if o.get("aliases") else "")
         if len(o["days"]) < MIN_DAYS:
@@ -457,8 +495,9 @@ def main():
         R.append(f"| {nm} | {min(o['days'])} to {max(o['days'])} | {len(o['days'])} | {len(o['validators'])} | {od} | {ev} |")
 
     R += ["", "## Scoring of the three signals", "",
-          "Precision: share of signal episodes followed by an outage or removal of the same organization within W days. "
-          "Recall: share of outcomes preceded by a signal episode within W days. Lead time: days from the first such episode to the outcome.", ""]
+          "An episode is a WARNING if an outcome of the same organization follows between 7 and W days later, an INCIDENT if an outcome "
+          "falls within a day before to 7 days after its start (the episode is the incident itself or too late to help), and a FALSE ALARM otherwise. "
+          "Precision = warnings / (warnings + false alarms). Recall = outcomes preceded by a warning. Lead time from the earliest warning.", ""]
     ep_rows = []
     for sig, desc in (("S1", "any validator < 90% or organization < 99%"),
                       ("S2", "organization < 99% on 3 of the trailing 7 days"),
@@ -466,21 +505,21 @@ def main():
         eps = episodes(table, bad, sig)
         n_eps = sum(len(v) for v in eps.values())
         R += [f"### {sig}: {desc}", "", f"{n_eps} episodes across {len(eps)} organizations.", "",
-              "| Window W | Min lead | Episodes | Followed by outcome | Precision | Outcomes | Preceded by episode | Recall | Lead time (days, median / min / max) |",
+              "| Window W | Warning | Incident (within a day before to 7 days after) | False alarm | Precision | Outcomes | Preceded by a warning | Recall | Lead time (days, median / min / max) |",
               "|---|---|---|---|---|---|---|---|---|"]
-        for min_lead in (0, MIN_LEAD):
-            for W in WINDOWS:
-                n_ep, tp, prec, n_out, hit, rec, leads = score(eps, outs, W, min_lead)
-                lt = "-"
-                if leads:
-                    s = sorted(leads)
-                    lt = f"{s[len(s) // 2]} / {s[0]} / {s[-1]}"
-                R.append(f"| {W} | {min_lead} | {n_ep} | {tp} | {pct(prec)} | {n_out} | {hit} | {pct(rec)} | {lt} |")
+        for W in WINDOWS:
+            warn, inc, fa, prec, n_out, hit, rec, leads = score(eps, outs, W)
+            lt = "-"
+            if leads:
+                s = sorted(leads)
+                lt = f"{s[len(s) // 2]} / {s[0]} / {s[-1]}"
+            R.append(f"| {W} | {warn} | {inc} | {fa} | {pct(prec)} | {n_out} | {hit} | {pct(rec)} | {lt} |")
         R.append("")
+        cls = classify(eps, outs, 365)
         for oid, lst in eps.items():
             for s, e, n in lst:
-                nxt = [od for od, _ in outs.get(oid, []) if days_between(s, od) >= 0]
-                ep_rows.append([sig, real[oid]["name"], s, e, n, min(nxt) if nxt else "", days_between(s, min(nxt)) if nxt else ""])
+                nxt = [od for od, _ in outs.get(oid, []) if days_between(s, od) >= -1]
+                ep_rows.append([sig, real[oid]["name"], s, e, n, min(nxt) if nxt else "", days_between(s, min(nxt)) if nxt else "", cls[(oid, s)]])
 
     R += ["## Outcomes and the earliest signal before each (within 365 days)", "",
           "| Organization | Date | Kind | S1 first signal, lead days | S3 first signal, lead days |", "|---|---|---|---|---|"]
@@ -495,13 +534,13 @@ def main():
     R += ["", "## Notes", "",
           "- Membership is sampled once per stable configuration state, so an organization that joined and left between two samples is missed.",
           "- A REMOVAL is counted whenever an organization's last membership day is more than 3 days before the data end, whatever the reason "
-          "(failure, voluntary exit, or a change of organization id in Radar). Check each against membership.csv.",
+          "(failure or voluntary exit). Organizations that share a validator key are merged, so a change of organization id is not a removal.",
           "- Organization availability is Radar's isSubQuorumAvailableCount / crawlCount; validator availability is isValidatingCount / crawlCount.",
-          "- Thresholds (90%, 99%, 10%, 75%, 7 day gap, 7 day minimum lead) are starting points. The proposal should report the score of the rule finally chosen, "
+          "- Thresholds (90%, 99%, 10%, 7 day gap, 7 day minimum lead) are starting points. The proposal should report the score of the rule finally chosen, "
           "with thresholds picked on 2019-2023 and tested on 2024-2026.", ""]
     with open(OUT / "episodes.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["signal", "organization", "episode_start", "episode_end", "signal_days", "next_outcome", "days_to_outcome"])
+        w.writerow(["signal", "organization", "episode_start", "episode_end", "signal_days", "next_outcome", "days_to_outcome", "class_at_365_days"])
         w.writerows(ep_rows)
     (OUT / "report.md").write_text("\n".join(R) + "\n", encoding="utf-8")
     (OUT / "run.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")

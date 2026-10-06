@@ -10,8 +10,7 @@ Scan the full history of the Stellar network (May 2019 -> today) to answer two q
      (motivation for the "early warning" direction)
 
 Run:    python full_scan.py
-Place it in the same directory as the earlier scripts. Days already downloaded
-(by event_deep_dive.py) are reused.
+Place it in the same directory as the earlier scripts. Days already downloaded are reused.
 The first run takes about 15-40 minutes (~2,700 days of data). If interrupted, run it
 again and it resumes where it stopped.
 
@@ -378,7 +377,7 @@ def main():
         R.append("**=> Threshold MET: " + " and ".join(why) + ".** Inspect each case below before relying on this.")
     else:
         R.append("**=> Threshold NOT met.** No configuration change passed through a sustained weak state, and the liveness margin "
-                 "never stayed at <= 1 for more than 1 hour. The data say the network ran well; the proposal lacks practical motivation.")
+                 "never stayed at <= 1 for more than 1 hour. The data say the network ran well.")
     if failed:
         R += ["", f"Note: {len(failed)} days failed to download (see run.log). Run the script again to fetch them before relying on the verdict."]
 

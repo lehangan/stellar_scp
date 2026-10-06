@@ -9,7 +9,7 @@ Verify the major events: at that time, the validators of WHICH ORGANIZATION were
   - No organization down but the metric dropped                   -> a configuration change
     (quorum set) or a computation error.
 
-Run:    python verify_cases.py          (about 25 requests, 1-2 minutes)
+Run:    python verify_case.py          (about 25 requests, 1-2 minutes)
 Output in ./sdf_feasibility/verify/
   report.md          read this file
   cases.csv          one row per (case, time, organization)

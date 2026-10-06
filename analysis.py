@@ -16,7 +16,7 @@ PART B - Daily timeline of Wirex (2022) and SatoshiPay (2025)
   Daily uptime per validator and for the organization, the first day with signs of
   degradation, and the distance to the removal / major outage.
 
-Run:    python mechanism_analysis.py      (about 15 requests, 1-3 minutes)
+Run:    python analysis.py      (about 15 requests, 1-3 minutes)
 Place it in the same directory as the earlier scripts; downloaded snapshots are reused.
 Output: ./sdf_feasibility/mechanism/report.md
 Standard library only.
