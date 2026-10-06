@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Kiem chung cac ca lon: tai thoi diem do, validator cua TO CHUC NAO khong hoat dong?
+Verify the major events: at that time, the validators of WHICH ORGANIZATION were not validating?
 
-  - Dung mot to chuc co da so validator ngung  -> su co that, biet luon to chuc nao.
-  - Nhieu to chuc cung "ngung" mot luc          -> nghi crawler cua Radar mat ket noi.
-  - Khong to chuc nao ngung nhung chi so giam    -> thay doi cau hinh (quorum set) hoac loi tinh toan.
+  - Exactly one organization lost the majority of its validators -> a real outage, and
+    the organization is identified.
+  - Many organizations "down" at the same moment                  -> Radar's crawler probably
+    lost connectivity.
+  - No organization down but the metric dropped                   -> a configuration change
+    (quorum set) or a computation error.
 
-Chay:   python verify_cases.py          (khoang 25 request, 1-2 phut)
-Ket qua trong ./sdf_feasibility/verify/
-  report.md          doc file nay
-  cases.csv          moi dong la mot (ca, thoi diem, to chuc)
-  raw/snap_*.json    snapshot goc
-Chi dung thu vien chuan. Chay lai se dung lai snapshot da tai.
+Run:    python verify_cases.py          (about 25 requests, 1-2 minutes)
+Output in ./sdf_feasibility/verify/
+  report.md          read this file
+  cases.csv          one row per (case, time, organization)
+  raw/snap_*.json    original snapshots
+Standard library only. A second run reuses the snapshots already downloaded.
 """
 
 import csv
@@ -28,25 +31,25 @@ OUT = Path("sdf_feasibility") / "verify"
 RAW = OUT / "raw"
 TIMEOUT = 120
 
-# (ten ca, mo ta, thoi diem doi chung truoc su kien, [cac thoi diem trong su kien])  -- gio UTC
+# (case name, description, reference time before the event, [times during the event])  -- UTC times
 CASES = [
-    ("2020-04-23", "Bien thuc te con 1 to chuc trong 7,7 gio",
+    ("2020-04-23", "Effective margin down to 1 organization for 7.7 hours",
      "2020-04-23T18:00", ["2020-04-24T01:00", "2020-04-24T05:00"]),
-    ("2020-05-22", "Bien danh nghia giam (blocking set 6 -> 4) trong 7,5 ngay",
+    ("2020-05-22", "Nominal margin reduced (blocking set 6 -> 4) for 7.5 days",
      "2020-05-21T12:00", ["2020-05-23T12:00", "2020-05-27T12:00"]),
-    ("2021-04-06", "SDF dung validator (da co thong cao); bien con 1 to chuc tu 14:34 trong 3,9 gio",
+    ("2021-04-06", "SDF validators halted (publicly reported); margin down to 1 organization from 14:34 for 3.9 hours",
      "2021-04-05T12:00", ["2021-04-06T10:00", "2021-04-06T16:00", "2021-04-07T12:00"]),
-    ("2022-07-26", "Bien thuc te mong 1,2 ngay, co luc con 1 to chuc",
+    ("2022-07-26", "Thin effective margin for 1.2 days, at times down to 1 organization",
      "2022-07-26T08:00", ["2022-07-26T20:00", "2022-07-27T08:00"]),
-    ("2022-12-13", "Bien mong 1,1 ngay roi top tier tu 8 ve 7 to chuc",
+    ("2022-12-13", "Thin margin for 1.1 days, then top tier from 8 to 7 organizations",
      "2022-12-13T06:00", ["2022-12-13T20:00", "2022-12-15T12:00"]),
-    ("2023-09-14", "Bien thuc te ve 0 nhieu lan trong 9 gio (nghi loi do)",
+    ("2023-09-14", "Effective margin at 0 several times within 9 hours (suspected measurement error)",
      "2023-09-13T18:00", ["2023-09-14T05:00", "2023-09-14T10:58", "2023-09-16T12:00"]),
-    ("2024-10-03", "Blocking set danh nghia 6 -> 5 trong 4,6 ngay",
+    ("2024-10-03", "Nominal blocking set 6 -> 5 for 4.6 days",
      "2024-10-03T10:00", ["2024-10-05T12:00"]),
-    ("2025-08-22", "Bien thuc te mong 3,1 ngay",
+    ("2025-08-22", "Thin effective margin for 3.1 days",
      "2025-08-22T08:00", ["2025-08-23T12:00", "2025-08-25T06:00"]),
-    ("2026-10-01", "Splitting set to chuc 4 -> 0 -> 1 (nghi do Radar doi bo phan tich)",
+    ("2026-10-01", "Organization splitting set 4 -> 0 -> 1 (suspected change of analyzer in Radar)",
      "2026-09-30T12:00", ["2026-10-01T09:00", "2026-10-01T23:00"]),
 ]
 
@@ -77,7 +80,7 @@ def snapshot(t):
                 data = json.loads(r.read().decode("utf-8", errors="replace"))
             if isinstance(data, dict) and "nodes" in data:
                 f.write_text(json.dumps(data), encoding="utf-8")
-                log(f"OK   {t} -> snapshot luc {data.get('time')}")
+                log(f"OK   {t} -> snapshot at {data.get('time')}")
                 time.sleep(0.5)
                 return data
         except urllib.error.HTTPError as e:
@@ -85,7 +88,7 @@ def snapshot(t):
             if e.code == 404:
                 return None
         except Exception as e:
-            log(f"LOI {type(e).__name__} {t}")
+            log(f"ERROR {type(e).__name__} {t}")
         time.sleep(5)
     return None
 
@@ -98,8 +101,8 @@ def walk(q, acc):
 
 
 def top_tier(net):
-    """Xap xi top tier = transitive quorum set cua mang (Radar tinh san).
-    Neu snapshot khong co truong nay: lay bao dong tin cay tu validator duoc tin nhieu nhat."""
+    """Approximate top tier = the transitive quorum set of the network (precomputed by Radar).
+    If the snapshot lacks this field: take the trust closure from the most trusted validator."""
     tq = net.get("transitiveQuorumSet")
     if tq:
         return set(tq)
@@ -126,7 +129,7 @@ def top_tier(net):
 
 
 def org_view(net, tier):
-    """{ten to chuc: [(ten node, isValidating, quorumSetHashKey)]} cho cac validator trong tier."""
+    """{organization name: [(node name, isValidating, quorumSetHashKey)]} for the validators in the tier."""
     nodes = {n["publicKey"]: n for n in net.get("nodes") or []}
     orgname = {}
     for o in net.get("organizations") or []:
@@ -135,7 +138,7 @@ def org_view(net, tier):
     view = {}
     for pk in tier:
         n = nodes.get(pk)
-        org = orgname.get(pk) or (n or {}).get("homeDomain") or "(khong ro to chuc)"
+        org = orgname.get(pk) or (n or {}).get("homeDomain") or "(unknown organization)"
         if n is None:
             view.setdefault(org, []).append((pk[:8], None, None))
         else:
@@ -151,9 +154,9 @@ def stats_line(net):
 
 def main():
     RAW.mkdir(parents=True, exist_ok=True)
-    R = ["# Kiem chung cac ca lon", "", f"Chay luc: {datetime.now().strftime('%Y-%m-%d %H:%M')}", "",
-         "Gio trong bao cao la UTC. 'Ngung' = Radar ghi validator do khong validating tai thoi diem do.", "",
-         "## Tom tat", "", "| Ca | Thoi diem | To chuc top tier mat da so validator | Tong validator top tier ngung | Nhan dinh |",
+    R = ["# Verification of major events", "", f"Run at: {datetime.now().strftime('%Y-%m-%d %H:%M')}", "",
+         "Times in this report are UTC. 'Down' = Radar recorded the validator as not validating at that time.", "",
+         "## Summary", "", "| Case | Time | Top tier organizations that lost their majority | Top tier validators down | Assessment |",
          "|---|---|---|---|---|"]
     detail, rows = [], []
 
@@ -161,26 +164,26 @@ def main():
         detail += ["", f"## {name}: {desc}", ""]
         base = snapshot(base_t)
         if not base:
-            detail.append(f"Khong tai duoc snapshot doi chung {base_t}.")
-            R.append(f"| {name} | {base_t} | - | - | khong tai duoc snapshot |")
+            detail.append(f"Could not download the reference snapshot {base_t}.")
+            R.append(f"| {name} | {base_t} | - | - | snapshot not available |")
             continue
         tier = top_tier(base)
         bview = org_view(base, tier)
         bq = {pk: n.get("quorumSetHashKey") for pk, n in ((n["publicKey"], n) for n in base.get("nodes") or [])}
-        detail += [f"**Doi chung {base_t}** (snapshot {base.get('time')}): top tier {len(tier)} validator, "
-                   f"{len(bview)} to chuc.", "", f"Chi so: {stats_line(base)}", ""]
+        detail += [f"**Reference {base_t}** (snapshot {base.get('time')}): top tier {len(tier)} validators, "
+                   f"{len(bview)} organizations.", "", f"Metrics: {stats_line(base)}", ""]
         bdown = [f"{o}: {', '.join(n for n, v, _ in vs if not v)}" for o, vs in sorted(bview.items())
                  if any(not v for _, v, _ in vs)]
         if bdown:
-            detail += ["Da ngung tu truoc: " + "; ".join(bdown), ""]
+            detail += ["Already down beforehand: " + "; ".join(bdown), ""]
 
         for t in probes:
             net = snapshot(t)
             if not net:
-                detail.append(f"**{t}**: khong tai duoc snapshot.")
-                R.append(f"| {name} | {t} | - | - | khong tai duoc snapshot |")
+                detail.append(f"**{t}**: snapshot not available.")
+                R.append(f"| {name} | {t} | - | - | snapshot not available |")
                 continue
-            # dung top tier cua DOI CHUNG de thay ai bien mat; ghi them thay doi thanh vien
+            # use the top tier of the REFERENCE snapshot to see who disappeared; also record membership changes
             view = org_view(net, tier)
             now_tier = top_tier(net)
             nq = {n["publicKey"]: n.get("quorumSetHashKey") for n in net.get("nodes") or []}
@@ -192,13 +195,13 @@ def main():
                 up = sum(1 for _, v, _ in vs if v)
                 total += len(vs)
                 down_nodes += len(vs) - up
-                majority_lost = up * 2 <= len(vs)          # con <= mot nua: to chuc khong con du da so
-                flag = "  <-- MAT DA SO" if majority_lost else ""
+                majority_lost = up * 2 <= len(vs)          # half or fewer left: the organization no longer has a majority
+                flag = "  <-- MAJORITY LOST" if majority_lost else ""
                 if majority_lost:
                     down_orgs.append(org)
                 off = [n for n, v, _ in vs if not v]
-                lines.append(f"- {org}: {up}/{len(vs)} dang validating"
-                             + (f" (ngung: {', '.join(off)})" if off else "") + flag)
+                lines.append(f"- {org}: {up}/{len(vs)} validating"
+                             + (f" (down: {', '.join(off)})" if off else "") + flag)
                 rows.append([name, t, org, len(vs), up, "; ".join(off), "x" if majority_lost else ""])
             joined = sorted(names.get(pk, pk[:8]) for pk in now_tier - tier)
             left = sorted(names.get(pk, pk[:8]) for pk in tier - now_tier)
@@ -207,39 +210,39 @@ def main():
 
             frac = down_nodes / total if total else 0
             if len(down_orgs) == 0 and not (joined or left or qchanged):
-                verdict = "khong to chuc nao mat da so, cau hinh khong doi: chi so giam khong giai thich duoc bang snapshot nay"
+                verdict = "no organization lost its majority and the configuration is unchanged: the drop is not explained by this snapshot"
             elif len(down_orgs) == 0:
-                verdict = "khong to chuc nao mat da so; co THAY DOI CAU HINH (xem chi tiet)"
+                verdict = "no organization lost its majority; CONFIGURATION CHANGE (see details)"
             elif frac > 0.5:
-                verdict = f"{len(down_orgs)} to chuc 'ngung' cung luc ({frac:.0%} validator): NGHI LOI CRAWLER"
+                verdict = f"{len(down_orgs)} organizations 'down' at once ({frac:.0%} of validators): SUSPECTED CRAWLER OUTAGE"
             elif len(down_orgs) == 1:
-                verdict = "su co that o 1 to chuc"
+                verdict = "real outage of 1 organization"
             else:
-                verdict = f"su co that, {len(down_orgs)} to chuc ngung dong thoi"
+                verdict = f"real outage, {len(down_orgs)} organizations down simultaneously"
             R.append(f"| {name} | {t} | {', '.join(down_orgs) or '-'} | {down_nodes}/{total} | {verdict} |")
 
-            detail += [f"**{t}** (snapshot {net.get('time')}): {verdict}", "", f"Chi so: {stats_line(net)}", ""] + lines
+            detail += [f"**{t}** (snapshot {net.get('time')}): {verdict}", "", f"Metrics: {stats_line(net)}", ""] + lines
             if joined:
-                detail.append(f"- Vao transitive quorum set so voi doi chung: {', '.join(joined)}")
+                detail.append(f"- Joined the transitive quorum set since the reference: {', '.join(joined)}")
             if left:
-                detail.append(f"- Roi transitive quorum set so voi doi chung: {', '.join(left)}")
+                detail.append(f"- Left the transitive quorum set since the reference: {', '.join(left)}")
             if qchanged:
-                detail.append(f"- Validator top tier DOI quorum set so voi doi chung: {', '.join(qchanged)}")
+                detail.append(f"- Top tier validators that CHANGED quorum set since the reference: {', '.join(qchanged)}")
             detail.append("")
 
-    R += ["", "Cach doc cot nhan dinh:",
-          "- 'su co that o 1 to chuc': dung kieu su kien SDF goi y (bao truoc cho node operator).",
-          "- 'NGHI LOI CRAWLER': qua nua validator top tier cung ngung, kho la su co that; khong nen dua vao proposal.",
-          "- 'THAY DOI CAU HINH': bien giam do quorum set hoac thanh vien top tier doi, khong phai do node hong.",
-          "- Top tier o day la transitive quorum set do Radar tinh tai thoi diem doi chung (xap xi).", ""]
+    R += ["", "How to read the assessment column:",
+          "- 'real outage of 1 organization': the kind of event the SDF reviewers suggested (contacting node operators preemptively).",
+          "- 'SUSPECTED CRAWLER OUTAGE': more than half of the top tier validators down at once, unlikely to be a real outage; exclude from the analysis.",
+          "- 'CONFIGURATION CHANGE': the margin dropped because a quorum set or the top tier membership changed, not because a node failed.",
+          "- The top tier here is the transitive quorum set computed by Radar at the reference time (an approximation).", ""]
     with open(OUT / "cases.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["ca", "thoi_diem_utc", "to_chuc", "so_validator", "dang_validating", "validator_ngung", "mat_da_so"])
+        w.writerow(["case", "time_utc", "organization", "validators", "validating", "validators_down", "majority_lost"])
         w.writerows(rows)
     (OUT / "report.md").write_text("\n".join(R + detail) + "\n", encoding="utf-8")
     (OUT / "run.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
     print("\n" + "\n".join(R))
-    print(f"Xong. Gui file {OUT / 'report.md'}.")
+    print(f"Done. Report written to {OUT / 'report.md'}.")
 
 
 if __name__ == "__main__":

@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
 """
-Quet toan bo lich su mang Stellar (5/2019 -> nay) de tra loi 2 cau hoi:
+Scan the full history of the Stellar network (May 2019 -> today) to answer two questions:
 
-  A. Co lan doi cau hinh nao di qua TRANG THAI TRUNG GIAN YEU hon ca diem dau va diem cuoi?
-     (dong luc cho huong "tai cau hinh an toan")
-  B. Co bao nhieu dot BIEN AN TOAN MONG keo dai >= 1 gio, va co lan nao bien xuong <= 1?
-     (dong luc cho huong "canh bao som")
+  A. Did any configuration change pass through an INTERMEDIATE STATE WEAKER than both
+     its starting and its final configuration?
+     (motivation for the "safe reconfiguration" direction)
+  B. How many periods of THIN LIVENESS MARGIN lasted >= 1 hour, and did the margin ever
+     drop to <= 1?
+     (motivation for the "early warning" direction)
 
-Chay:   python full_scan.py
-Dat cung thu muc voi cac script truoc. Ngay nao da tai (boi event_deep_dive.py) se duoc dung lai.
-Lan dau mat khoang 15-40 phut (~2.700 ngay du lieu). Bi ngat thi chay lai, no tiep tuc tu cho dung.
+Run:    python full_scan.py
+Place it in the same directory as the earlier scripts. Days already downloaded
+(by event_deep_dive.py) are reused.
+The first run takes about 15-40 minutes (~2,700 days of data). If interrupted, run it
+again and it resumes where it stopped.
 
-Ket qua trong ./sdf_feasibility/full_scan/
-  report.md                 doc file nay, phan KET LUAN o dau
-  config_steps.csv          moi trang thai cau hinh on dinh trong 7 nam
-  reconfig_episodes.csv     cac dot tai cau hinh (nhom cac lan chuyen gan nhau)
-  thin_margin.csv           moi dot bien mong >= 15 phut
+Output in ./sdf_feasibility/full_scan/
+  report.md                 read this first; the VERDICT is at the top
+  config_steps.csv          every stable configuration state over the seven years
+  reconfig_episodes.csv     reconfiguration episodes (transitions close in time, grouped)
+  thin_margin.csv           every thin margin period >= 15 minutes
   no_quorum_intersection.csv
   run.log
-Chi dung thu vien chuan.
+Standard library only.
 """
 
 import csv
@@ -31,15 +35,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# ----------------------------- CAU HINH -----------------------------
+# ----------------------------- CONFIGURATION -----------------------------
 
 BASE = "https://radar.withobsrvr.com/api"
 START = "2019-05-20"
-END = None                      # None = hom nay
-RAW = Path("sdf_feasibility") / "events" / "raw"     # dung chung cache voi script truoc
+END = "2026-10-02"               # None = today
+RAW = Path("sdf_feasibility") / "events" / "raw"     # cache shared with the earlier script
 OUT = Path("sdf_feasibility") / "full_scan"
 
-THREADS = 3                     # so request song song (giu thap cho lich su)
+THREADS = 3                     # parallel requests (kept low to be polite)
 TIMEOUT = 120
 
 CFG = ["topTierSize", "topTierOrgsSize", "minBlockingSetSize",
@@ -48,14 +52,14 @@ RESILIENCE = ["minBlockingSetSize", "minBlockingSetOrgsSize",
               "minSplittingSetSize", "minSplittingSetOrgsSize"]
 REAL, NOMINAL = "minBlockingSetOrgsFilteredSize", "minBlockingSetOrgsSize"
 
-MIN_STEP_SCANS = 5              # trang thai ngan hon so lan quet nay coi la nhieu
-EPISODE_QUIET_DAYS = 14         # 2 lan chuyen cach nhau duoi so ngay nay thuoc cung 1 dot tai cau hinh
-GAP_MINUTES = 30                # 2 dot bien mong cach nhau duoi muc nay thi gop lam mot
-THIN_MIN_MINUTES = 15           # chi ghi cac dot bien mong tu muc nay tro len
+MIN_STEP_SCANS = 5              # states shorter than this many scans are treated as noise
+EPISODE_QUIET_DAYS = 14         # transitions closer than this many days belong to the same reconfiguration episode
+GAP_MINUTES = 30                # thin margin periods closer than this are merged into one
+THIN_MIN_MINUTES = 15           # only thin margin periods at least this long are written out
 
-# Nguong cua quy tac dung
-RULE_WEAK_TRANSITIONS = 1       # >= 1 dot tai cau hinh co trang thai trung gian yeu keo dai >= 1 gio
-RULE_MARGIN1_MINUTES = 60       # hoac >= 1 dot bien thuc te <= 1 keo dai >= 60 phut
+# Thresholds of the stopping rule
+RULE_WEAK_TRANSITIONS = 1       # >= 1 reconfiguration episode with a weak intermediate state lasting >= 1 hour
+RULE_MARGIN1_MINUTES = 60       # or >= 1 period with effective margin <= 1 lasting >= 60 minutes
 
 # --------------------------------------------------------------------
 
@@ -99,17 +103,17 @@ def iso(dt):
 
 def dur(minutes):
     if minutes < 60:
-        return f"{minutes:.0f} phut"
+        return f"{minutes:.0f} min"
     if minutes < 1440:
-        return f"{minutes / 60:.1f} gio"
-    return f"{minutes / 1440:.1f} ngay"
+        return f"{minutes / 60:.1f} h"
+    return f"{minutes / 1440:.1f} days"
 
 
 def minutes_between(a, b):
     return (pt(b) - pt(a)).total_seconds() / 60
 
 
-# ------------------------- tai du lieu -------------------------
+# ------------------------- download -------------------------
 
 def download_day(day):
     f = RAW / f"stats_{day.strftime('%Y-%m-%d')}.json"
@@ -120,13 +124,13 @@ def download_day(day):
     if isinstance(data, list):
         f.write_text(json.dumps(data), encoding="utf-8")
         return day, True
-    LOG.append(f"LOI tai {day.strftime('%Y-%m-%d')}: HTTP {status}")
+    LOG.append(f"download ERROR {day.strftime('%Y-%m-%d')}: HTTP {status}")
     return day, False
 
 
 def download_all(days):
     todo = [d for d in days if not (RAW / f"stats_{d.strftime('%Y-%m-%d')}.json").exists()]
-    log(f"Tong {len(days)} ngay, da co {len(days) - len(todo)}, can tai {len(todo)}")
+    log(f"{len(days)} days in total, {len(days) - len(todo)} already cached, {len(todo)} to download")
     failed, done, t0 = [], 0, time.time()
     with ThreadPoolExecutor(max_workers=THREADS) as ex:
         for day, ok in ex.map(download_day, todo):
@@ -136,12 +140,12 @@ def download_all(days):
             if done % 100 == 0 or done == len(todo):
                 rate = done / max(time.time() - t0, 1)
                 left = (len(todo) - done) / max(rate, 0.01) / 60
-                log(f"  da tai {done}/{len(todo)} ngay, loi {len(failed)}, con khoang {left:.0f} phut")
+                log(f"  downloaded {done}/{len(todo)} days, {len(failed)} failed, about {left:.0f} min left")
     return failed
 
 
 def load_all(days):
-    """Tra ve list tuple gon: (time, cfg..., real, nominal, qi). Bo lan quet loi."""
+    """Returns a list of compact tuples: (time, cfg..., real, nominal, qi). Failed scans are dropped."""
     rows, total, seen_last = [], 0, ""
     for d in days:
         f = RAW / f"stats_{d.strftime('%Y-%m-%d')}.json"
@@ -166,7 +170,7 @@ def load_all(days):
     return rows, total
 
 
-# ------------------------- phan tich -------------------------
+# ------------------------- analysis -------------------------
 
 NC = len(CFG)
 
@@ -194,13 +198,13 @@ def config_steps(rows):
 
 
 def reconfig_episodes(steps):
-    """Nhom cac lan chuyen gan nhau. Moi dot: trang thai dau (on dinh truoc do),
-    cac trang thai trung gian, trang thai cuoi (on dinh sau do)."""
+    """Group transitions that are close in time. Each episode: the starting state (stable before),
+    the intermediate states, and the final state (stable after)."""
     eps, i = [], 0
     quiet = EPISODE_QUIET_DAYS * 1440
     while i < len(steps) - 1:
         j = i + 1
-        # keo dai dot cho den khi gap trang thai on dinh du lau (hoac het du lieu)
+        # extend the episode until a state that stays stable long enough (or the data ends)
         while j < len(steps) - 1 and minutes_between(steps[j]["start"], steps[j]["end"]) < quiet:
             j += 1
         first, last, mid = steps[i], steps[j], steps[i + 1:j]
@@ -238,7 +242,7 @@ def thin_margin(rows):
     if cur:
         raw.append(cur)
     merged = []
-    for e in raw:      # gop cac dot cach nhau duoi GAP_MINUTES (node chap chon)
+    for e in raw:      # merge periods less than GAP_MINUTES apart (flapping nodes)
         if merged and minutes_between(merged[-1]["end"], e["start"]) < GAP_MINUTES:
             m = merged[-1]
             m["end"] = e["end"]
@@ -252,7 +256,7 @@ def thin_margin(rows):
 
 
 def margin_le1_runs(rows):
-    """Cac dot lien tuc ma bien thuc te (to chuc) <= 1."""
+    """Contiguous periods in which the effective margin (organizations) is <= 1."""
     runs, cur = [], None
     for r in rows:
         real = r[1 + NC]
@@ -300,7 +304,7 @@ def keystr(k):
     return "/".join("-" if v is None else str(v) for v in k)
 
 
-# ------------------------------ chinh ------------------------------
+# ------------------------------ main ------------------------------
 
 def main():
     RAW.mkdir(parents=True, exist_ok=True)
@@ -311,11 +315,11 @@ def main():
     days = [start + timedelta(days=i) for i in range((end - start).days)]
 
     failed = download_all(days)
-    log("Dang doc du lieu...")
+    log("Reading data...")
     rows, total = load_all(days)
-    log(f"{total} lan quet, hop le {len(rows)}")
+    log(f"{total} scans, {len(rows)} valid")
     if not rows:
-        log("KHONG CO DU LIEU. Xem run.log.")
+        log("NO DATA. See run.log.")
         (OUT / "run.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
         return
 
@@ -325,23 +329,23 @@ def main():
     le1 = margin_le1_runs(rows)
     noqi = no_qi_runs(rows)
 
-    write_csv("config_steps.csv", ["bat_dau", "ket_thuc", "phut", "so_lan_quet"] + CFG,
+    write_csv("config_steps.csv", ["start", "end", "minutes", "scans"] + CFG,
               [[s["start"], s["end"], round(minutes_between(s["start"], s["end"])), s["n"]] + list(s["key"])
                for s in steps])
     write_csv("reconfig_episodes.csv",
-              ["bat_dau", "ket_thuc", "so_trang_thai_trung_gian", "dau(" + "/".join(CFG) + ")", "cuoi",
-               "co_trang_thai_yeu", "chi_tiet_yeu"],
+              ["start", "end", "intermediate_states", "first(" + "/".join(CFG) + ")", "last",
+               "has_weak_state", "weak_state_details"],
               [[e["start"], e["end"], e["n_mid"], keystr(e["first"]), keystr(e["last"]),
-                "CO" if e["weak"] else "khong",
-                "; ".join(f"{w['metric']}={w['value']} (dau {w['from']}, cuoi {w['to']}) tu {w['start'][:16]} trong {dur(w['minutes'])}"
+                "YES" if e["weak"] else "no",
+                "; ".join(f"{w['metric']}={w['value']} (first {w['from']}, last {w['to']}) from {w['start'][:16]} for {dur(w['minutes'])}"
                           for w in e["weak"])] for e in eps])
     thin15 = [e for e in thin if e["minutes"] >= THIN_MIN_MINUTES]
-    write_csv("thin_margin.csv", ["bat_dau", "ket_thuc", "phut", "so_lan_quet", "bien_thuc_te_min", "bien_danh_nghia"],
+    write_csv("thin_margin.csv", ["start", "end", "minutes", "scans", "min_effective_margin", "nominal_margin"],
               [[e["start"], e["end"], round(e["minutes"]), e["n"], e["min_real"], e["nominal"]] for e in thin15])
-    write_csv("no_quorum_intersection.csv", ["bat_dau", "ket_thuc", "phut", "so_lan_quet"],
+    write_csv("no_quorum_intersection.csv", ["start", "end", "minutes", "scans"],
               [[e["start"], e["end"], round(e["minutes"]), e["n"]] for e in noqi])
 
-    # ---- so lieu cho quy tac dung
+    # ---- figures for the stopping rule
     weak_eps = [e for e in eps if e["weak_minutes"] >= 60]
     weak_short = [e for e in eps if e["weak"] and e["weak_minutes"] < 60]
     le1_long = [e for e in le1 if e["minutes"] >= RULE_MARGIN1_MINUTES]
@@ -353,76 +357,76 @@ def main():
     go_a = len(weak_eps) >= RULE_WEAK_TRANSITIONS
     go_b = len(le1_long) >= 1
 
-    R = ["# Quet toan bo lich su mang Stellar", "",
-         f"Chay luc: {datetime.now().strftime('%Y-%m-%d %H:%M')}", "",
-         f"Du lieu: {rows[0][0][:10]} den {rows[-1][0][:10]}, {len(rows)} lan quet hop le "
-         f"(tong {total}), {len(failed)} ngay tai loi.", "",
-         "## KET LUAN THEO QUY TAC DUNG", "",
-         f"- A. Dot tai cau hinh co trang thai trung gian yeu keo dai >= 1 gio: **{len(weak_eps)}** "
-         f"(tren tong {len(eps)} dot; them {len(weak_short)} dot co trang thai yeu nhung duoi 1 gio)",
-         f"- B. Dot bien thuc te <= 1 to chuc keo dai >= {RULE_MARGIN1_MINUTES} phut: **{len(le1_long)}** "
-         f"(tong so dot bien <= 1 bat ky do dai: {len(le1)})",
-         f"- Tham khao: dot bien mong (thuc te < danh nghia) >= 1 gio: {len(thin_1h)}; >= 6 gio: {len(thin_6h)}; "
-         f">= 24 gio: {len(thin_24h)}",
-         f"- Tham khao: dot mat quorum intersection >= 1 gio: {len(noqi_long)} (tong {len(noqi)} dot bat ky do dai)", ""]
+    R = ["# Full history scan of the Stellar network", "",
+         f"Run at: {datetime.now().strftime('%Y-%m-%d %H:%M')}", "",
+         f"Data: {rows[0][0][:10]} to {rows[-1][0][:10]}, {len(rows)} valid scans "
+         f"({total} in total), {len(failed)} days failed to download.", "",
+         "## VERDICT UNDER THE STOPPING RULE", "",
+         f"- A. Reconfiguration episodes with a weak intermediate state lasting >= 1 hour: **{len(weak_eps)}** "
+         f"(out of {len(eps)} episodes; {len(weak_short)} more have a weak state shorter than 1 hour)",
+         f"- B. Periods with effective margin <= 1 organization lasting >= {RULE_MARGIN1_MINUTES} minutes: **{len(le1_long)}** "
+         f"(periods with margin <= 1 of any length: {len(le1)})",
+         f"- For reference: thin margin periods (effective < nominal) >= 1 hour: {len(thin_1h)}; >= 6 hours: {len(thin_6h)}; "
+         f">= 24 hours: {len(thin_24h)}",
+         f"- For reference: periods without quorum intersection >= 1 hour: {len(noqi_long)} ({len(noqi)} periods of any length)", ""]
     if go_a or go_b:
         why = []
         if go_a:
-            why.append("co bang chung lich su cho bai toan thu tu tai cau hinh")
+            why.append("there is historical evidence for the reconfiguration ordering problem")
         if go_b:
-            why.append("co ca bien an toan xuong muc nguy hiem keo dai")
-        R.append("**=> DAT nguong di tiep: " + " va ".join(why) + ".** Can doc ky tung ca ben duoi truoc khi tin.")
+            why.append("there is a sustained period with the liveness margin at a dangerous level")
+        R.append("**=> Threshold MET: " + " and ".join(why) + ".** Inspect each case below before relying on this.")
     else:
-        R.append("**=> KHONG dat nguong.** Khong co lan chuyen cau hinh nao di qua trang thai yeu keo dai, va bien an toan "
-                 "chua lan nao xuong <= 1 qua 1 gio. Du lieu noi rang mang van hanh on; de xuat thieu dong luc thuc tien.")
+        R.append("**=> Threshold NOT met.** No configuration change passed through a sustained weak state, and the liveness margin "
+                 "never stayed at <= 1 for more than 1 hour. The data say the network ran well; the proposal lacks practical motivation.")
     if failed:
-        R += ["", f"Luu y: {len(failed)} ngay tai loi (xem run.log). Chay lai script de tai bu truoc khi tin ket luan."]
+        R += ["", f"Note: {len(failed)} days failed to download (see run.log). Run the script again to fetch them before relying on the verdict."]
 
-    R += ["", "## A. Cac dot tai cau hinh", "",
-          f"{len(steps)} trang thai cau hinh on dinh, {len(eps)} dot tai cau hinh, bo {noise} doan nhieu "
-          f"ngan hon {MIN_STEP_SCANS} lan quet.", "",
-          "Thu tu chi so: " + " / ".join(CFG), "",
-          "| Bat dau | Ket thuc | Trung gian | Dau | Cuoi | Trang thai yeu |", "|---|---|---|---|---|---|"]
+    R += ["", "## A. Reconfiguration episodes", "",
+          f"{len(steps)} stable configuration states, {len(eps)} reconfiguration episodes, {noise} noise segments "
+          f"shorter than {MIN_STEP_SCANS} scans dropped.", "",
+          "Order of metrics: " + " / ".join(CFG), "",
+          "| Start | End | Intermediate | First | Last | Weak state |", "|---|---|---|---|---|---|"]
     for e in eps:
-        wk = "; ".join(f"{w['metric']}={w['value']} trong {dur(w['minutes'])}" for w in e["weak"]) or "khong"
+        wk = "; ".join(f"{w['metric']}={w['value']} for {dur(w['minutes'])}" for w in e["weak"]) or "none"
         R.append(f"| {e['start'][:16]} | {e['end'][:16]} | {e['n_mid']} | {keystr(e['first'])} | {keystr(e['last'])} | {wk} |")
 
-    R += ["", "## B. Bien an toan mong", "",
-          f"Tong {len(thin)} dot sau khi gop ({thin_raw} dot tho). Phan bo theo do dai:", ""]
-    for label, lo, hi in [("duoi 15 phut", 0, 15), ("15 phut - 1 gio", 15, 60), ("1 - 6 gio", 60, 360),
-                          ("6 - 24 gio", 360, 1440), ("tren 24 gio", 1440, 10 ** 9)]:
-        R.append(f"- {label}: {sum(1 for e in thin if lo <= e['minutes'] < hi)} dot")
-    R += ["", "Theo nam (chi tinh dot >= 1 gio):", ""]
+    R += ["", "## B. Thin liveness margin", "",
+          f"{len(thin)} periods after merging ({thin_raw} raw periods). Distribution by length:", ""]
+    for label, lo, hi in [("under 15 minutes", 0, 15), ("15 minutes - 1 hour", 15, 60), ("1 - 6 hours", 60, 360),
+                          ("6 - 24 hours", 360, 1440), ("over 24 hours", 1440, 10 ** 9)]:
+        R.append(f"- {label}: {sum(1 for e in thin if lo <= e['minutes'] < hi)} periods")
+    R += ["", "By year (periods >= 1 hour only):", ""]
     years = sorted({e["start"][:4] for e in thin_1h})
     for y in years:
         ys = [e for e in thin_1h if e["start"][:4] == y]
-        R.append(f"- {y}: {len(ys)} dot, tong {dur(sum(e['minutes'] for e in ys))}, bien thap nhat {min(e['min_real'] for e in ys)}")
-    R += ["", "30 dot dai nhat:", "", "| Bat dau | Do dai | Bien thuc te thap nhat | Bien danh nghia |", "|---|---|---|---|"]
+        R.append(f"- {y}: {len(ys)} periods, total {dur(sum(e['minutes'] for e in ys))}, lowest margin {min(e['min_real'] for e in ys)}")
+    R += ["", "30 longest periods:", "", "| Start | Length | Lowest effective margin | Nominal margin |", "|---|---|---|---|"]
     for e in sorted(thin, key=lambda e: -e["minutes"])[:30]:
         R.append(f"| {e['start'][:16]} | {dur(e['minutes'])} | {e['min_real']} | {e['nominal']} |")
 
-    R += ["", "### Cac dot bien thuc te <= 1 to chuc (20 dot dai nhat)", "",
-          "| Bat dau | Do dai | Thap nhat | Bien danh nghia luc do |", "|---|---|---|---|"]
+    R += ["", "### Periods with effective margin <= 1 organization (20 longest)", "",
+          "| Start | Length | Lowest | Nominal margin at the time |", "|---|---|---|---|"]
     for e in sorted(le1, key=lambda e: -e["minutes"])[:20]:
         R.append(f"| {e['start'][:16]} | {dur(e['minutes'])} | {e['min']} | {e['nominal']} |")
 
-    R += ["", "## C. Mat quorum intersection", ""]
+    R += ["", "## C. Loss of quorum intersection", ""]
     if noqi:
-        R += ["| Bat dau | Do dai | So lan quet |", "|---|---|---|"]
+        R += ["| Start | Length | Scans |", "|---|---|---|"]
         for e in sorted(noqi, key=lambda e: -e["minutes"])[:20]:
             R.append(f"| {e['start'][:16]} | {dur(e['minutes'])} | {e['n']} |")
     else:
-        R.append("Khong co lan quet nao mat quorum intersection.")
+        R.append("No scan without quorum intersection.")
 
-    R += ["", "## Gioi han cua phan tich nay", "",
-          "- Chi dung 4 chi so resilience ma Radar tinh san; trang thai 'yeu' theo chi so khac se khong hien ra.",
-          f"- Trang thai ton tai duoi {MIN_STEP_SCANS} lan quet bi coi la nhieu va bo qua.",
-          "- Bien danh nghia thap o giai doan 2019 (blocking set to chuc = 2) lam tang so dot bien <= 1 cua nam do.",
-          "- So lieu la cua crawler Radar; node crawler mat ket noi co the tao dot bien mong gia.", ""]
+    R += ["", "## Limitations of this analysis", "",
+          "- Only the four resilience metrics precomputed by Radar are used; states that are 'weak' by another metric do not show up.",
+          f"- States that last fewer than {MIN_STEP_SCANS} scans are treated as noise and dropped.",
+          "- The low nominal margin in 2019 (organization blocking set = 2) inflates the number of periods with margin <= 1 for that year.",
+          "- The data come from Radar's crawler; a crawler that loses connectivity can create spurious thin margin periods.", ""]
     (OUT / "report.md").write_text("\n".join(R) + "\n", encoding="utf-8")
     (OUT / "run.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
     print("\n" + "\n".join(R[:14]))
-    print(f"\nXong. Gui file {OUT / 'report.md'} de doc tiep.")
+    print(f"\nDone. Report written to {OUT / 'report.md'}.")
 
 
 if __name__ == "__main__":

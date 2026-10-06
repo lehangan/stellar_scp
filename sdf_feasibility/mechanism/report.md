@@ -1,146 +1,146 @@
-# Phan tich co che
+# Mechanism analysis
 
-Chay luc: 2026-10-02 11:37
+Run at: 2026-10-06 11:19
 
-## Tom tat phan A (doi cau hinh)
+## Summary of part A (configuration changes)
 
-- 2020-05 Blockdaemon: XAC NHAN: rieng thay doi nay da du de lam bien to chuc giam tu 3 xuong 2.
-- 2021-04 SDF: XAC NHAN: rieng thay doi nay da du de lam bien to chuc giam tu 3 xuong 2.
-- 2024-10 Franklin Templeton: XAC NHAN (cap node): rieng thay doi nay lam blocking set giam tu 6 xuong 5 node.
+- 2020-05 Blockdaemon: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.
+- 2021-04 SDF: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.
+- 2024-10 Franklin Templeton: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.
 
-Cach doc: 'XAC NHAN' nghia la chi can thay quorum set cua dung to chuc do vao cau hinh cu la bien an toan toan mang giam dung nhu thuc te. Day la phan thuc truc tiep cho cau 'cong cu kiem tra truoc khi doi se phat hien duoc'.
-Gioi han: script chi xet cac validator trong top tier va tu cai dat phep tinh blocking set; so co the lech voi Radar o truong hop bien.
+How to read: 'CONFIRMED' means that replacing only that organization's quorum sets in the earlier configuration lowers the network wide margin exactly as observed. This is the direct counterfactual for the claim that a check run before the change would have detected it.
+Limitation: the script considers top tier validators only and uses its own blocking set computation; values may differ from Radar in edge cases.
 
-## 2020-05 Blockdaemon: Blocking set 6 -> 4 (to chuc 3 -> 2) trong 7,5 ngay
+## 2020-05 Blockdaemon: Blocking set 6 -> 4 (organizations 3 -> 2) for 7.5 days
 
-Top tier luc doi chung: 23 validator. Validator doi quorum set: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+Top tier at the reference time: 23 validators. Validators that changed quorum set: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
 
-### Quorum set cua: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+### Quorum set of: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
 
-TRUOC:
+BEFORE:
 ```
-- can 5 trong 7 phan tu
-  [Keybase] can 2 trong 3: Keybase 0, Keybase 1, Keybase 2
-  [LOBSTR] can 3 trong 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Wirex Limited] can 2 trong 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [COINQVEST Limited] can 2 trong 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
-  [SatoshiPay] can 2 trong 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+- requires 5 of 7 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST Limited] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
 ```
-SAU:
+AFTER:
 ```
-- can 5 trong 6 phan tu
-  [Keybase] can 2 trong 3: Keybase 0, Keybase 1, Keybase 2
-  [LOBSTR] can 3 trong 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Wirex Limited] can 2 trong 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [COINQVEST Limited] can 2 trong 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+- requires 5 of 6 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST Limited] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
 ```
-Khac biet: nguong ngoai 5 -> 5; so phan tu ngoai 7 -> 6; bo: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+Difference: outer threshold 5 -> 5; outer elements 7 -> 6; removed: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
 
-### Bien an toan tu tinh lai (chi xet top tier)
+### Recomputed liveness margin (top tier only)
 
-| Cau hinh | Min blocking set (to chuc) | (node) | Radar ghi (to chuc / node) | Cac nhom to chuc nho nhat du de chan mang |
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
 |---|---|---|---|---|
-| Truoc khi doi | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST Limited + Keybase; Blockdaemon Inc. + COINQVEST Limited + LOBSTR; Blockdaemon Inc. + COINQVEST Limited + SatoshiPay; Blockdaemon Inc. + COINQVEST Limited + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST Limited + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
-| Thuc te sau khi doi | 2 | 4 | 2 / 4 | COINQVEST Limited + Keybase; COINQVEST Limited + LOBSTR; COINQVEST Limited + Stellar Development Foundation; COINQVEST Limited + Wirex Limited; Keybase + LOBSTR; Keybase + Stellar Development Foundation |
-| PHAN THUC: chi doi quorum set cua cac validator tren | 2 | 4 | - | COINQVEST Limited + Keybase; COINQVEST Limited + LOBSTR; COINQVEST Limited + Stellar Development Foundation; COINQVEST Limited + Wirex Limited; Keybase + LOBSTR; Keybase + Stellar Development Foundation |
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST Limited + Keybase; Blockdaemon Inc. + COINQVEST Limited + LOBSTR; Blockdaemon Inc. + COINQVEST Limited + SatoshiPay; Blockdaemon Inc. + COINQVEST Limited + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST Limited + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+| Actual, after the change | 2 | 4 | 2 / 4 | COINQVEST Limited + Keybase; COINQVEST Limited + LOBSTR; COINQVEST Limited + Stellar Development Foundation; COINQVEST Limited + Wirex Limited; Keybase + LOBSTR; Keybase + Stellar Development Foundation |
+| COUNTERFACTUAL: only the quorum sets of the validators above replaced | 2 | 4 | - | COINQVEST Limited + Keybase; COINQVEST Limited + LOBSTR; COINQVEST Limited + Stellar Development Foundation; COINQVEST Limited + Wirex Limited; Keybase + LOBSTR; Keybase + Stellar Development Foundation |
 
-**Ket luan co che: XAC NHAN: rieng thay doi nay da du de lam bien to chuc giam tu 3 xuong 2.**
-Sau do (2020-05-30T12:00): 3/3 validator da quay ve quorum set cu; Radar ghi blocking set to chuc/node = 3/6.
+**Mechanism verdict: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.**
+Afterwards (2020-05-30T12:00): 3/3 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
 
-## 2021-04 SDF: Sau su co 6/4/2021, blocking set 6 -> 4 trong 1,3 ngay
+## 2021-04 SDF: After the 6 April 2021 incident, blocking set 6 -> 4 for 1.3 days
 
-Top tier luc doi chung: 23 validator. Validator doi quorum set: SDF 3, SDF 1, SDF 2
+Top tier at the reference time: 23 validators. Validators that changed quorum set: SDF 3, SDF 1, SDF 2
 
-### Quorum set cua: SDF 3, SDF 1, SDF 2
+### Quorum set of: SDF 3, SDF 1, SDF 2
 
-TRUOC:
+BEFORE:
 ```
-- can 5 trong 7 phan tu
-  [Keybase] can 2 trong 3: Keybase 0, Keybase 1, Keybase 2
-  [LOBSTR] can 3 trong 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Wirex Limited] can 2 trong 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [COINQVEST OÜ] can 2 trong 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
-  [SatoshiPay] can 2 trong 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+- requires 5 of 7 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST OÜ] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
 ```
-SAU:
+AFTER:
 ```
-- can 5 trong 6 phan tu
-  [Keybase] can 2 trong 3: Keybase 0, Keybase 1, Keybase 2
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Wirex Limited] can 2 trong 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [COINQVEST OÜ] can 2 trong 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
-  [SatoshiPay] can 2 trong 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+- requires 5 of 6 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST OÜ] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
 ```
-Khac biet: nguong ngoai 5 -> 5; so phan tu ngoai 7 -> 6; bo: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+Difference: outer threshold 5 -> 5; outer elements 7 -> 6; removed: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
 
-### Bien an toan tu tinh lai (chi xet top tier)
+### Recomputed liveness margin (top tier only)
 
-| Cau hinh | Min blocking set (to chuc) | (node) | Radar ghi (to chuc / node) | Cac nhom to chuc nho nhat du de chan mang |
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
 |---|---|---|---|---|
-| Truoc khi doi | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
-| Thuc te sau khi doi | 2 | 4 | 2 / 4 | Blockdaemon Inc. + COINQVEST OÜ; Blockdaemon Inc. + Keybase; Blockdaemon Inc. + SatoshiPay; Blockdaemon Inc. + Wirex Limited; COINQVEST OÜ + Keybase; COINQVEST OÜ + SatoshiPay |
-| PHAN THUC: chi doi quorum set cua cac validator tren | 2 | 4 | - | Blockdaemon Inc. + COINQVEST OÜ; Blockdaemon Inc. + Keybase; Blockdaemon Inc. + SatoshiPay; Blockdaemon Inc. + Wirex Limited; COINQVEST OÜ + Keybase; COINQVEST OÜ + SatoshiPay |
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+| Actual, after the change | 2 | 4 | 2 / 4 | Blockdaemon Inc. + COINQVEST OÜ; Blockdaemon Inc. + Keybase; Blockdaemon Inc. + SatoshiPay; Blockdaemon Inc. + Wirex Limited; COINQVEST OÜ + Keybase; COINQVEST OÜ + SatoshiPay |
+| COUNTERFACTUAL: only the quorum sets of the validators above replaced | 2 | 4 | - | Blockdaemon Inc. + COINQVEST OÜ; Blockdaemon Inc. + Keybase; Blockdaemon Inc. + SatoshiPay; Blockdaemon Inc. + Wirex Limited; COINQVEST OÜ + Keybase; COINQVEST OÜ + SatoshiPay |
 
-**Ket luan co che: XAC NHAN: rieng thay doi nay da du de lam bien to chuc giam tu 3 xuong 2.**
-Sau do (2021-04-20T12:00): 3/3 validator da quay ve quorum set cu; Radar ghi blocking set to chuc/node = 3/6.
+**Mechanism verdict: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.**
+Afterwards (2021-04-20T12:00): 3/3 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
 
-## 2024-10 Franklin Templeton: Blocking set 6 -> 5 trong 4,6 ngay
+## 2024-10 Franklin Templeton: Blocking set 6 -> 5 for 4.6 days
 
-Top tier luc doi chung: 23 validator. Validator doi quorum set: FT SCV 2
+Top tier at the reference time: 23 validators. Validators that changed quorum set: FT SCV 2
 
-### Quorum set cua: FT SCV 2
+### Quorum set of: FT SCV 2
 
-TRUOC:
+BEFORE:
 ```
-- can 5 trong 7 phan tu
-  [LOBSTR] can 3 trong 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (India)
-  [Franklin Templeton] can 2 trong 3: FT SCV 1, FT SCV 2, FT SCV 3
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [Whalestack LLC] can 2 trong 3: Whalestack (Finland), Whalestack (Germany), Whalestack (Hong Kong)
-  [SatoshiPay] can 2 trong 3: SatoshiPay Frankfurt, SatoshiPay Iowa, SatoshiPay Singapore
-  [Public Node] can 2 trong 3: Boötes, Hercules by OG Technologies, Lyra by BP Ventures
+- requires 5 of 7 elements
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (India)
+  [Franklin Templeton] requires 2 of 3: FT SCV 1, FT SCV 2, FT SCV 3
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [Whalestack LLC] requires 2 of 3: Whalestack (Finland), Whalestack (Germany), Whalestack (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay Frankfurt, SatoshiPay Iowa, SatoshiPay Singapore
+  [Public Node] requires 2 of 3: Boötes, Hercules by OG Technologies, Lyra by BP Ventures
 ```
-SAU:
+AFTER:
 ```
-- can 5 trong 6 phan tu
-  [Franklin Templeton] can 2 trong 3: FT SCV 1, FT SCV 2, FT SCV 3
-  [Blockdaemon Inc.] can 2 trong 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
-  [Stellar Development Foundation] can 2 trong 3: SDF 1, SDF 2, SDF 3
-  [Whalestack LLC] can 2 trong 3: Whalestack (Finland), Whalestack (Germany), Whalestack (Hong Kong)
-  [SatoshiPay] can 2 trong 3: SatoshiPay Frankfurt, SatoshiPay Iowa, SatoshiPay Singapore
-  [Public Node] can 2 trong 3: Boötes, Hercules by OG Technologies, Lyra by BP Ventures
+- requires 5 of 6 elements
+  [Franklin Templeton] requires 2 of 3: FT SCV 1, FT SCV 2, FT SCV 3
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [Whalestack LLC] requires 2 of 3: Whalestack (Finland), Whalestack (Germany), Whalestack (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay Frankfurt, SatoshiPay Iowa, SatoshiPay Singapore
+  [Public Node] requires 2 of 3: Boötes, Hercules by OG Technologies, Lyra by BP Ventures
 ```
-Khac biet: nguong ngoai 5 -> 5; so phan tu ngoai 7 -> 6; bo: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (India)
+Difference: outer threshold 5 -> 5; outer elements 7 -> 6; removed: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (India)
 
-### Bien an toan tu tinh lai (chi xet top tier)
+### Recomputed liveness margin (top tier only)
 
-| Cau hinh | Min blocking set (to chuc) | (node) | Radar ghi (to chuc / node) | Cac nhom to chuc nho nhat du de chan mang |
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
 |---|---|---|---|---|
-| Truoc khi doi | 3 | 6 | 3 / 6 | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
-| Thuc te sau khi doi | 3 | 5 | 3 / 5 | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
-| PHAN THUC: chi doi quorum set cua cac validator tren | 3 | 5 | - | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
+| Actual, after the change | 3 | 5 | 3 / 5 | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
+| COUNTERFACTUAL: only the quorum sets of the validators above replaced | 3 | 5 | - | Blockdaemon Inc. + Franklin Templeton + LOBSTR; Blockdaemon Inc. + Franklin Templeton + Public Node; Blockdaemon Inc. + Franklin Templeton + SatoshiPay; Blockdaemon Inc. + Franklin Templeton + Stellar Development Foundation; Blockdaemon Inc. + Franklin Templeton + Whalestack LLC; Blockdaemon Inc. + LOBSTR + Public Node |
 
-**Ket luan co che: XAC NHAN (cap node): rieng thay doi nay lam blocking set giam tu 6 xuong 5 node.**
-Sau do (2024-10-09T12:00): 1/1 validator da quay ve quorum set cu; Radar ghi blocking set to chuc/node = 3/6.
+**Mechanism verdict: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.**
+Afterwards (2024-10-09T12:00): 1/1 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
 
-## Dien bien Wirex: 2022-01-01 den 2022-12-31 (moc: 2022-12-14, roi top tier)
+## Timeline of Wirex: 2022-01-01 to 2022-12-31 (milestone: 2022-12-14, left the top tier)
 
-Validator: Wirex Singapore, Wirex United Kingdom, Wirex United States. So ngay co du lieu: 365. So ngay co dau hieu (mot validator duoi 90% hoac to chuc duoi 99%): 46.
+Validators: Wirex Singapore, Wirex United Kingdom, Wirex United States. Days with data: 365. Days with signs of degradation (a validator below 90% or the organization below 99%): 46.
 
-- Ngay dau tien co dau hieu: **2022-04-30**, tuc 228 ngay truoc moc 2022-12-14 (roi top tier).
-- So ngay CA TO CHUC khong kha dung mot phan (duoi 99%): 25, dau tien 2022-04-30.
+- First day with signs: **2022-04-30**, 228 days before the milestone 2022-12-14 (left the top tier).
+- Days on which THE ORGANIZATION was partly unavailable (below 99%): 25, first on 2022-04-30.
 
-Theo thang:
+By month:
 
-| Thang | Ngay co dau hieu | Wirex Singapore | Wirex United Kingdom | Wirex United States | To chuc |
+| Month | Days with signs | Wirex Singapore | Wirex United Kingdom | Wirex United States | Organization |
 |---|---|---|---|---|---|
 | 2022-01 | 0 | 100% | 100% | 100% | 100% |
 | 2022-02 | 0 | 100% | 100% | 100% | 100% |
@@ -155,9 +155,9 @@ Theo thang:
 | 2022-11 | 0 | 100% | 100% | 100% | 100% |
 | 2022-12 | 25 | 40% | 28% | 40% | 41% |
 
-40 ngay co dau hieu dau tien:
+First 40 days with signs:
 
-| Ngay | Wirex Singapore | Wirex United Kingdom | Wirex United States | To chuc |
+| Date | Wirex Singapore | Wirex United Kingdom | Wirex United States | Organization |
 |---|---|---|---|---|
 | 2022-04-30 | 100% | 98% | 99% | 99% |
 | 2022-05-04 | 100% | 86% | 100% | 100% |
@@ -200,16 +200,16 @@ Theo thang:
 | 2022-12-24 | 0% | 0% | 0% | 0% |
 | 2022-12-25 | 0% | 0% | 0% | 0% |
 
-## Dien bien SatoshiPay: 2025-01-01 den 2026-09-30 (moc: 2025-08-22, ngung ca 3 validator hon 3 ngay)
+## Timeline of SatoshiPay: 2025-01-01 to 2026-09-30 (milestone: 2025-08-22, all 3 validators down for more than 3 days)
 
-Validator: SatoshiPay Iowa, SatoshiPay Singapore, SatoshiPay Frankfurt. So ngay co du lieu: 638. So ngay co dau hieu (mot validator duoi 90% hoac to chuc duoi 99%): 157.
+Validators: SatoshiPay Iowa, SatoshiPay Singapore, SatoshiPay Frankfurt. Days with data: 638. Days with signs of degradation (a validator below 90% or the organization below 99%): 157.
 
-- Ngay dau tien co dau hieu: **2025-01-20**, tuc 214 ngay truoc moc 2025-08-22 (ngung ca 3 validator hon 3 ngay).
-- So ngay CA TO CHUC khong kha dung mot phan (duoi 99%): 109, dau tien 2025-01-20.
+- First day with signs: **2025-01-20**, 214 days before the milestone 2025-08-22 (all 3 validators down for more than 3 days).
+- Days on which THE ORGANIZATION was partly unavailable (below 99%): 109, first on 2025-01-20.
 
-Theo thang:
+By month:
 
-| Thang | Ngay co dau hieu | SatoshiPay Iowa | SatoshiPay Singapore | SatoshiPay Frankfurt | To chuc |
+| Month | Days with signs | SatoshiPay Iowa | SatoshiPay Singapore | SatoshiPay Frankfurt | Organization |
 |---|---|---|---|---|---|
 | 2025-01 | 9 | 100% | 93% | 98% | 100% |
 | 2025-02 | 17 | 91% | 92% | 99% | 97% |
@@ -233,9 +233,9 @@ Theo thang:
 | 2026-08 | 31 | 0% | 0% | 0% | 0% |
 | 2026-09 | 30 | 0% | 0% | 0% | 0% |
 
-40 ngay co dau hieu dau tien:
+First 40 days with signs:
 
-| Ngay | SatoshiPay Iowa | SatoshiPay Singapore | SatoshiPay Frankfurt | To chuc |
+| Date | SatoshiPay Iowa | SatoshiPay Singapore | SatoshiPay Frankfurt | Organization |
 |---|---|---|---|---|
 | 2025-01-20 | 100% | 64% | 99% | 99% |
 | 2025-01-21 | 100% | 65% | 100% | 100% |

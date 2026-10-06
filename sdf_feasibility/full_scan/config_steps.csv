@@ -1,4 +1,4 @@
-bat_dau,ket_thuc,phut,so_lan_quet,topTierSize,topTierOrgsSize,minBlockingSetSize,minBlockingSetOrgsSize,minSplittingSetSize,minSplittingSetOrgsSize
+start,end,minutes,scans,topTierSize,topTierOrgsSize,minBlockingSetSize,minBlockingSetOrgsSize,minSplittingSetSize,minSplittingSetOrgsSize
 2019-05-31T10:35:09.274Z,2019-06-04T11:03:31.038Z,5788,2016,17,17,4,4,2,2
 2019-06-04T11:06:21.811Z,2019-06-10T06:36:37.089Z,8370,2906,17,17,4,4,3,3
 2019-06-10T06:42:46.560Z,2019-10-30T15:49:27.674Z,205027,73051,17,5,4,2,3,3
