@@ -1,0 +1,18 @@
+org_id,name,first_day,last_day,days_in_top_tier,validators
+ad733706cebb901f8b8cbb1b6a9bb785,LOBSTR,2019-06-10,2026-10-06,2676,LOBSTR 1 (Europe); LOBSTR 2 (Europe); LOBSTR 2 (Europe); LOBSTR 3 (North America); LOBSTR 4 (Asia); LOBSTR 5 (India)
+ef9ec94c54770b31813afa8ce4c70ffd,Keybase,2019-06-10,2022-03-13,1008,Keybase 0; Keybase 1; Keybase 2
+753e017d811e12c41ef03b5b4c51a1a5,SatoshiPay,2019-06-10,2026-08-27,2636,SatoshiPay Frankfurt; SatoshiPay Iowa; SatoshiPay Singapore
+9f0e64db2ff15d04f037a0cb6c8723b3,COINQVEST LLC,2019-06-10,2024-10-02,1942,COINQVEST (Finland); COINQVEST (Germany); COINQVEST (Hong Kong)
+266107f8966d45eedce41fee2581326d,Stellar Development Foundation,2019-06-10,2026-10-06,2676,SDF 1; SDF 2; SDF 3
+c1a16879b171bc6f0087f884acbea046,Blockdaemon Inc.,2019-10-30,2026-10-06,2534,Blockdaemon Validator 1; Blockdaemon Validator 2; Blockdaemon Validator 3
+7c0cd6fcefa744d98f50caa87cdcff0d,Wirex Limited,2020-01-31,2022-12-13,1048,Wirex Singapore; Wirex United Kingdom; Wirex United States
+f0927ec974076b13a51133b896dfed6a,Muyu Network,2021-04-13,2021-04-18,6,fchain core1; fchain core2; fchain core3; fchain core4
+423a27d2fd868305b493413cd8637a82,SAKKEX OÜ,2021-04-13,2021-04-18,6,GBTNFYOZ; Sakkex Singapore; Sakkex United Kingdom
+2dd1cd0e5ba445846799c0d1114dda47,Public Node,2022-03-08,2026-10-06,1674,Boötes; Hercules; Lyra
+bc8b7a147ab684c37551a69369b70953,Franklin Templeton,2022-10-19,2026-10-06,1449,FT SCV 1; FT SCV 2; FT SCV 3
+9860311160b56412668f572a6d9454d0,Whalestack LLC,2024-10-03,2025-01-09,99,Whalestack (Finland); Whalestack (Germany); Whalestack (Hong Kong)
+a742187e2b2408eea2abad9d277f43aa,Creit Technologies LLP,2025-01-08,2026-10-06,637,Alpha Node Validator; Beta Node Validator; Gamma Node Validator
+341fdc78bd09a5c0f0f421e5bb643882,OBSRVR,2026-07-15,2026-10-06,84,OBSRVR Validator 1; OBSRVR Validator 2; OBSRVR Validator 3
+20d4aa35ec6298a96d32b9f5af0c3238,Range,2026-08-27,2026-10-06,41,Range 1; Range 2; Range 3
+7a10062a7206ad1c401d1169159d2701,Figure Certificate Company,2026-08-27,2026-10-06,41,YLDS Central; YLDS East; YLDS West
+d9321af0a3c5a5f9a41716a3c37bd8e7,MoneyGram,2026-08-27,2026-10-06,41,MoneyGram Validator 1; MoneyGram Validator 2; MoneyGram Validator 3

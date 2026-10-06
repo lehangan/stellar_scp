@@ -1,12 +1,16 @@
 # Mechanism analysis
 
-Run at: 2026-10-06 11:19
+Run at: 2026-10-06 13:48
 
 ## Summary of part A (configuration changes)
 
 - 2020-05 Blockdaemon: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.
 - 2021-04 SDF: CONFIRMED: this change alone is sufficient to lower the organization level margin from 3 to 2.
 - 2024-10 Franklin Templeton: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.
+- 2022-02 unexplained: No top tier validator changed its quorum set between the two snapshots.
+- 2022-07 Wirex period: No top tier validator changed its quorum set between the two snapshots.
+- 2022-07-13 organizations 2: No top tier validator changed its quorum set between the two snapshots.
+- 2021-04-13 transient: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.
 
 How to read: 'CONFIRMED' means that replacing only that organization's quorum sets in the earlier configuration lowers the network wide margin exactly as observed. This is the direct counterfactual for the claim that a check run before the change would have detected it.
 Limitation: the script considers top tier validators only and uses its own blocking set computation; values may differ from Radar in edge cases.
@@ -130,6 +134,92 @@ Difference: outer threshold 5 -> 5; outer elements 7 -> 6; removed: LOBSTR 1 (Eu
 
 **Mechanism verdict: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.**
 Afterwards (2024-10-09T12:00): 1/1 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
+
+## 2022-02 unexplained: Node blocking set 6 -> 5 for 2.4 days
+
+Top tier at the reference time: 23 validators. Validators that changed quorum set: NONE
+
+### Recomputed liveness margin (top tier only)
+
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
+|---|---|---|---|---|
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+| Actual, after the change | 3 | 6 | 3 / 5 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+
+**Mechanism verdict: No top tier validator changed its quorum set between the two snapshots.**
+Afterwards (2022-03-01T12:00): 0/0 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
+
+## 2022-07 Wirex period: Nominal blocking set 6 -> 5 for 3 days during the Wirex trouble
+
+Top tier at the reference time: 23 validators. Validators that changed quorum set: NONE
+
+### Recomputed liveness margin (top tier only)
+
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
+|---|---|---|---|---|
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST LLC + LOBSTR; Blockdaemon Inc. + COINQVEST LLC + Public Node; Blockdaemon Inc. + COINQVEST LLC + SatoshiPay; Blockdaemon Inc. + COINQVEST LLC + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST LLC + Wirex Limited; Blockdaemon Inc. + LOBSTR + Public Node |
+| Actual, after the change | 3 | 6 | 3 / 5 | Blockdaemon Inc. + COINQVEST LLC + LOBSTR; Blockdaemon Inc. + COINQVEST LLC + Public Node; Blockdaemon Inc. + COINQVEST LLC + SatoshiPay; Blockdaemon Inc. + COINQVEST LLC + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST LLC + Wirex Limited; Blockdaemon Inc. + LOBSTR + Public Node |
+
+**Mechanism verdict: No top tier validator changed its quorum set between the two snapshots.**
+Afterwards (2022-07-25T12:00): 0/0 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
+
+## 2022-07-13 organizations 2: Nominal blocking set 4 (organizations 2) for 12.6 h
+
+Top tier at the reference time: 23 validators. Validators that changed quorum set: NONE
+
+### Recomputed liveness margin (top tier only)
+
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
+|---|---|---|---|---|
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST LLC + LOBSTR; Blockdaemon Inc. + COINQVEST LLC + Public Node; Blockdaemon Inc. + COINQVEST LLC + SatoshiPay; Blockdaemon Inc. + COINQVEST LLC + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST LLC + Wirex Limited; Blockdaemon Inc. + LOBSTR + Public Node |
+| Actual, after the change | 3 | 6 | 2 / 4 | Blockdaemon Inc. + COINQVEST LLC + LOBSTR; Blockdaemon Inc. + COINQVEST LLC + Public Node; Blockdaemon Inc. + COINQVEST LLC + SatoshiPay; Blockdaemon Inc. + COINQVEST LLC + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST LLC + Wirex Limited; Blockdaemon Inc. + LOBSTR + Public Node |
+
+**Mechanism verdict: No top tier validator changed its quorum set between the two snapshots.**
+Afterwards (2022-07-25T12:00): 0/0 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
+
+## 2021-04-13 transient: Node blocking set 5 for 5.4 h with a 30/9 top tier
+
+Top tier at the reference time: 23 validators. Validators that changed quorum set: LOBSTR 5 (Australia), LOBSTR 2 (Europe)
+
+### Quorum set of: LOBSTR 5 (Australia), LOBSTR 2 (Europe)
+
+BEFORE:
+```
+- requires 5 of 7 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+  [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST OÜ] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+```
+AFTER:
+```
+- requires 5 of 7 elements
+  [Keybase] requires 2 of 3: Keybase 0, Keybase 1, Keybase 2
+  [LOBSTR] requires 3 of 5: LOBSTR 1 (Europe), LOBSTR 2 (Europe), LOBSTR 3 (North America), LOBSTR 4 (Asia), LOBSTR 5 (Australia)
+  [Wirex Limited] requires 2 of 3: Wirex Singapore, Wirex United Kingdom, Wirex United States
+  [Stellar Development Foundation] requires 2 of 3: SDF 1, SDF 2, SDF 3
+  [COINQVEST OÜ] requires 2 of 3: COINQVEST (Finland), COINQVEST (Germany), COINQVEST (Hong Kong)
+  [SatoshiPay] requires 2 of 3: SatoshiPay (DE, Frankfurt), SatoshiPay (SG, Singapore), SatoshiPay (US, Iowa)
+  - requires 3 of 3 elements
+    [Blockdaemon Inc.] requires 2 of 3: Blockdaemon Validator 1, Blockdaemon Validator 2, Blockdaemon Validator 3
+    [Muyu Network] requires 3 of 4: fchain core1, fchain core2, fchain core3, fchain core4
+    [SAKKEX OÜ] requires 2 of 3: GBTNFYOZ, Sakkex Singapore, Sakkex United Kingdom
+```
+Difference: outer threshold 5 -> 5; outer elements 7 -> 7; added: GBTNFYOZ, Sakkex Singapore, Sakkex United Kingdom, fchain core1, fchain core2, fchain core3, fchain core4
+
+### Recomputed liveness margin (top tier only)
+
+| Configuration | Min blocking set (organizations) | (nodes) | Recorded by Radar (organizations / nodes) | Smallest groups of organizations that block the network |
+|---|---|---|---|---|
+| Before the change | 3 | 6 | 3 / 6 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+| Actual, after the change | 3 | 5 | 3 / 5 | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+| COUNTERFACTUAL: only the quorum sets of the validators above replaced | 3 | 5 | - | Blockdaemon Inc. + COINQVEST OÜ + Keybase; Blockdaemon Inc. + COINQVEST OÜ + LOBSTR; Blockdaemon Inc. + COINQVEST OÜ + SatoshiPay; Blockdaemon Inc. + COINQVEST OÜ + Stellar Development Foundation; Blockdaemon Inc. + COINQVEST OÜ + Wirex Limited; Blockdaemon Inc. + Keybase + LOBSTR |
+
+**Mechanism verdict: CONFIRMED (node level): this change alone lowers the blocking set from 6 to 5 nodes.**
+Afterwards (2021-04-14T12:00): 2/2 validators had returned to the earlier quorum set; Radar records blocking set organizations/nodes = 3/6.
 
 ## Timeline of Wirex: 2022-01-01 to 2022-12-31 (milestone: 2022-12-14, left the top tier)
 

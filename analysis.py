@@ -46,6 +46,14 @@ CONFIG_CASES = [
      "2021-04-05T12:00", "2021-04-07T12:00", "2021-04-20T12:00"),
     ("2024-10 Franklin Templeton", "Blocking set 6 -> 5 for 4.6 days",
      "2024-10-03T10:00", "2024-10-05T12:00", "2024-10-09T12:00"),
+    ("2022-02 unexplained", "Node blocking set 6 -> 5 for 2.4 days",
+     "2022-02-25T12:00", "2022-02-27T12:00", "2022-03-01T12:00"),
+    ("2022-07 Wirex period", "Nominal blocking set 6 -> 5 for 3 days during the Wirex trouble",
+     "2022-07-09T12:00", "2022-07-11T12:00", "2022-07-25T12:00"),
+    ("2022-07-13 organizations 2", "Nominal blocking set 4 (organizations 2) for 12.6 h",
+     "2022-07-09T12:00", "2022-07-13T12:00", "2022-07-25T12:00"),
+    ("2021-04-13 transient", "Node blocking set 5 for 5.4 h with a 30/9 top tier",
+     "2021-04-12T12:00", "2021-04-13T15:00", "2021-04-14T12:00"),
 ]
 
 # (organization name contains this string, snapshot used to get public keys, from, to, milestone date, milestone description)
