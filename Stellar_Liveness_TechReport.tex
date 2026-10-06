@@ -1,0 +1,169 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{10pt}{3pt}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\subsection}{0pt}{7pt}{2pt}
+\setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
+\urlstyle{same}
+\newcommand{\toolname}[1]{\texttt{#1}}
+
+\begin{document}
+
+{\Large\bfseries Quorum Configuration Changes and Liveness Margin in the Stellar Network, 2019--2026}
+
+Tra Nguyen \quad Nguyen Binh Minh \\
+Hanoi University of Science and Technology \\
+6 October 2026 (revised; supersedes the version of 2 October 2026)
+
+\subsection*{Summary}
+We analysed 1.2 million network scans of the Stellar public network from May 2019 to October 2026, verified every thin margin period of one hour or more against a full network snapshot, and pulled daily availability for every organization that was ever in the top tier. Safety margins were stable throughout: quorum intersection held in every scan. Liveness margins were not. Four times, one operator changed its quorum set while nothing else changed, and the fault tolerance of the whole network dropped as a side effect, twice from two organization failures to one, for between five hours and 7.5 days. Separately, three of the four organizations that left the top tier over the period (Keybase, Wirex and SatoshiPay; not Whalestack) showed months of degraded validator availability first, and SatoshiPay accounts for ten of the sixteen verified organization outages of an hour or more. A simple availability rule scored across all top tier organizations catches 64\% of outages and removals at least a week ahead, with a median lead of about five months, but only 40\% of its alarms are followed by anything within a year. Availability alone is therefore a weak early warning signal; the configuration side is where a check would have made a difference.
+
+Preliminary analysis prepared at Hanoi University of Science and Technology in response to the review of the proposal ``Dynamic Resilience Monitoring and Quorum Reconfiguration for the Stellar Consensus Protocol'' (PI: Assoc.\ Prof.\ Nguyen Binh Minh). Scripts and data: \url{https://github.com/lehangan/stellar_scp}.
+
+\section{Data and method}
+All data come from the public API of OBSRVR Radar, formerly Stellarbeat~\cite{radar}.
+
+\begin{itemize}
+\item \textbf{Network statistics.} 1,214,403 scans from 31 May 2019 to 1 October 2026, one every 3 to 5 minutes. Each scan records the top tier size, the minimal blocking set and minimal splitting set~\cite{florian2022} at node and organization level, and a second blocking set figure that discounts validators currently failing (``effective'' margin below).
+\item \textbf{Network snapshots.} Full network state at 159 instants: the start of each of the 52 stable configuration states, and one to four instants inside every event. Each snapshot gives every validator's quorum set and validating status.
+\item \textbf{Daily availability.} Per validator and per organization daily availability for all 14 organizations that were in the top tier for at least a month, over the whole period.
+\end{itemize}
+
+Events were detected in two ways. A \emph{configuration event} is a change in the nominal margins that persists for at least five scans. A \emph{degradation event} is a period in which the effective margin is below the nominal margin. Every event was then checked against snapshots: an outage is counted only if the validators of a named organization were not validating while the rest of the top tier was; scans in which more than half of the top tier appears down at once are treated as crawler outages and excluded.
+
+One property of the data matters for interpretation. Radar's nominal margins respond not only to quorum set changes but also to reachability: a validator the crawler cannot reach at all drops out of the nominal computation. Two of the six episodes flagged as weak intermediate states by the scan (February 2022 and July 2022) turned out to be of this kind, with no quorum set change in any top tier validator. We therefore classify an episode as a configuration event only when a snapshot diff shows a changed quorum set.
+
+For every configuration event we recomputed the minimal blocking set ourselves by exhaustive enumeration over the top tier. Our figures match those recorded by Radar in every case, before and after the change.
+
+\section{Finding 1: safety margins were stable for seven years}
+Quorum intersection held in all 1,214,403 scans. From February 2020 to August 2026 the minimal splitting set stayed at three organizations; it rose to four after the expansion to ten tier 1 organizations on 27 and 28 August 2026.
+
+Top tier membership changed nine times: Blockdaemon joined (October 2019), Wirex joined (January 2020), Keybase left and Public Node joined (March 2022), Franklin Templeton joined (October 2022), Wirex left (December 2022), Whalestack, formerly COINQVEST, left and Creit Technologies joined (January 2025), LOBSTR retired two of its five validators (April 2025), SatoshiPay left and OBSRVR joined (15 July 2026), and MoneyGram, Range and Figure joined (27 August 2026). None of these changes passed through an intermediate state with a lower organization level margin than both its starting and its final configuration. They were, however, staggered: in the August 2026 expansion the three new organizations appeared in the transitive quorum set on 27 August at 09:23 UTC, but the blocking set rose from three organizations to four only on 28 August at 08:26, once the last operators had raised their thresholds. For about 23 hours the network had ten organizations and still tolerated the failure of only two.
+
+The history therefore does not support the premise of gradual erosion of safety. The events worth studying are on the liveness side.
+
+\section{Finding 2: a single operator's change lowered the fault tolerance of the whole network}
+Four times, one operator changed its quorum set while nothing else in the network changed, no validator failed, and every organization was validating normally (Table~\ref{tab:config}). In three cases the operator removed one organization from its list; in the fourth, two LOBSTR validators wrapped Blockdaemon together with two organizations outside the top tier into an inner set that required all three of them, which pulled seven outside validators into the transitive quorum set for six hours. All four changes were later reverted and the margins returned to their previous values.
+
+\begin{table}[h]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llllll@{}}
+\toprule
+Period & Operator (validators) & Change & Slice & Blocking set & Duration \\
+\midrule
+22 to 29 May 2020 & Blockdaemon (3) & removed SatoshiPay & 5 of 7 to 5 of 6 & 3/6 to 2/4 & 7.5 days \\
+7 to 8 April 2021 & SDF (3) & removed LOBSTR & 5 of 7 to 5 of 6 & 3/6 to 2/4 & 1.3 days \\
+13 April 2021 & LOBSTR (2 of 5) & 3 of 3 inner set & 5 of 7, nested & 3/6 to 3/5 & 5.4 hours \\
+3 to 8 October 2024 & Franklin Templeton (1 of 3) & removed LOBSTR & 5 of 7 to 5 of 6 & 3/6 to 3/5 & 4.6 days \\
+\bottomrule
+\end{tabular}
+\caption{Single operator changes that lowered the network wide liveness margin (blocking set in organizations/nodes). In the first two cases the network went from tolerating two organization failures to tolerating one.}
+\label{tab:config}
+\end{table}
+
+\textbf{Mechanism.} \toolname{stellar-core} generates quorum sets automatically and gives a group of $n$ organizations the threshold $n-\lfloor (n-1)/3 \rfloor$, which assumes Byzantine failure~\cite{configuring}. For seven organizations the threshold is five, and for six it is still five. An operator who deletes one organization from its list therefore ends up requiring five of the remaining six. Two failures among those six now block that operator. Once it is blocked, every other organization has lost three of its seven and is blocked as well.
+
+\textbf{Counterfactual.} For each case we took the configuration before the change and replaced only the quorum sets of the validators that changed. The recomputed minimal blocking set equals the value observed after the change in all four cases. The change alone is sufficient to explain the drop, and a check run on the proposed quorum set before applying it would have shown the effect.
+
+\textbf{Operator intent is unknown.} Two of the four changes fall in the two weeks after the incident of 6 April 2021, in which SDF's and LOBSTR's validators were down together for 3.9 hours~\cite{sdf2021}. SDF's removal of LOBSTR the next day may well have been a deliberate trade of margin for isolation from an unstable peer; at least three operators (SDF, LOBSTR, SatoshiPay) changed quorum sets unilaterally in that fortnight. What was missing in every case was a number for what the change cost the network.
+
+\textbf{Existing safeguards.} The \toolname{stellar-core} configuration guide warns that removing a validator may have unintended consequences for other participants and advises coordination~\cite{configuring}. The quorum intersection checker built into \toolname{stellar-core} evaluates the current network state and is concerned with safety~\cite{monitoring}. Stellarbeat has offered a simulation mode since February 2021 in which a user can edit one node's quorum set by hand and rerun the network analysis~\cite{stellarbeat2021}; \toolname{fbas\_analyzer}~\cite{florian2022} and \toolname{python-fbas}~\cite{pythonfbas} can analyse any configuration given to them. What does not exist is a check that runs on a proposed change inside an operator's workflow and reports its effect on the whole network before the change is applied.
+
+\section{Finding 3: outages were preceded by months of visible degradation, and most degradation was not followed by an outage}
+After excluding crawler outages, the scan contains 32 periods of one hour or more in which failing validators reduced the effective liveness margin. Snapshots verify 16 of them as outages of a named organization (Table~\ref{tab:outages}); 12 are short dips that the sampled snapshot did not catch at the sampled instant; three belong to a crawler outage on 14 September 2023; one is an attribution artifact in which Radar grouped a LOBSTR validator under a separate home domain. SatoshiPay accounts for ten of the sixteen verified outages, spread over 2020, 2021, 2024 and 2025.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lp{6.6cm}ll@{}}
+\toprule
+Organization & Verified outages of one hour or more & Longest & Margin during the longest \\
+\midrule
+SDF & 23 April 2020; 10 May 2020 & 7.7 hours & 2 organizations, briefly 1 \\
+SDF and LOBSTR & 6 April 2021, 8 of 23 validators down together & 3.9 hours & 1 organization \\
+Wirex & 13 July, 26 July and 13 December 2022 & 1.2 days & 2 organizations, briefly 1 \\
+SatoshiPay & 31 May 2020; 1 September (twice) and 13 October 2021; 14 February 2024; 18, 25 (twice) and 26 February 2025; 22 August 2025 & 3.1 days & 2 organizations \\
+\bottomrule
+\end{tabular}
+\caption{Organization outages verified against snapshots. Wirex left the top tier on 14 December 2022; SatoshiPay was removed from quorum sets on 15 July 2026.}
+\label{tab:outages}
+\end{table}
+
+Radar's network alert for organization level liveness fires when the remaining margin reaches one organization~\cite{radar}. In the whole record only the incident of 6 April 2021 held at that threshold for hours; five other periods touched it for minutes, and for most of the duration of every other outage the margin stayed at two.
+
+\textbf{Degradation before exit.} Three of the four organizations that left the top tier degraded first. Keybase had one validator at or near zero availability for days at a time from October 2021 and continuously from late February 2022, and was removed from quorum sets between 8 and 22 March 2022, as Public Node took its place. Wirex showed intermittent validator outages from 10 July 2022, a two day organization outage in late July, and left on 14 December 2022. SatoshiPay showed degraded daily availability on 36 days between January and March 2025, a three day outage from 22 August 2025, renewed degradation from December 2025, and was removed on 15 July 2026, with its validators silent since August 2026. Whalestack, which left in January 2025 as Creit Technologies took its place, showed only minor signs beforehand.
+
+\textbf{Scoring across all organizations.} Lead times measured only on organizations already known to have failed say nothing about false alarms. We therefore scored a candidate rule over all 14 organizations and all 18,592 organization days in the top tier. The rule, S3, fires on a day on which any validator of the organization validated for 10\% of the day or less, or the organization as a whole was available for less than 90\% of it; consecutive firing days with gaps of a week or less form one episode. Outcomes are an outage day (the organization available for less than 75\% of a day, about six hours down) or removal from the top tier; there are eleven in the record. An episode counts as a warning only if it starts at least seven days before the outcome.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Window & Episodes & Followed by an outcome & Outcomes preceded by an episode & Median lead & Range \\
+\midrule
+180 days & 35 & 12 (34\%) & 7 of 11 (64\%) & 153 days & 15 to 178 \\
+365 days & 35 & 14 (40\%) & 7 of 11 (64\%) & 155 days & 15 to 326 \\
+\bottomrule
+\end{tabular}
+\caption{Rule S3 scored over all top tier organizations, 2019 to 2026, counting only episodes that start at least a week before the outcome. Lead time is measured from the first qualifying episode.}
+\label{tab:score}
+\end{table}
+
+Under this rule the lead times of the featured cases are 155 days for Wirex (from 11 July 2022 to its exit), 153 days for Keybase, and 178 days for SatoshiPay's August 2025 outage. The earlier figure of 157 days for Wirex depended on an undeclared threshold; the figure of 228 days produced by a looser rule (any validator below 90\%) comes with a precision of 29\%. Eighteen of the 35 episodes were followed by nothing within a year; Franklin Templeton and LOBSTR alone account for nine of them. The four outcomes that no episode preceded are the one day outages of SDF in April 2020 and Whalestack in November 2023, Whalestack's departure in January 2025, and Wirex's first outage, which came two days after its first signal.
+
+The conclusion is the opposite of the one a reader might draw from the two featured cases alone: availability is a reasonable screen (it would have flagged three of the four organizations that eventually left, months ahead) but a poor alarm, because most degradation is transient. Whether combining it with the margin itself, so that a degrading organization matters more when the margin is already thin, yields a usable signal is an open question, and the proposed work treats it as one.
+
+\section{Current state}
+As of 1 October 2026 the top tier has 30 validators in ten organizations (Blockdaemon, Creit Technologies, Figure, Franklin Templeton, LOBSTR, MoneyGram, OBSRVR, Public Node, Range, SDF), threshold seven of ten, a nominal and effective liveness margin of four organizations, and a splitting set of four. A drop of the organization level splitting set to one and briefly to zero, intermittently between 08:09 and 22:45 UTC on 1 October 2026 and gone by 23:00, with no quorum set change and no validator failure, coincides with a change in Radar's analysis code and is treated as a measurement artifact.
+
+\section{Limitations}
+\begin{itemize}
+\item \textbf{Single vantage point.} A validator recorded as not validating or unreachable may have been invisible to Radar's crawler only. We excluded scans in which more than half the top tier appears down, but partial crawler problems may remain, and twelve short dips could not be attributed at the sampled instant.
+\item \textbf{Nominal is not configured.} Nominal margins react to reachability as well as to configuration. Only snapshot diffs establish a configuration change, and we classify only on that basis.
+\item \textbf{Sampled membership and verification.} Membership and validator status are read from 159 snapshots, not from every scan; an organization that joined and left between samples would be missed, and each event is verified at one to four instants rather than reconstructed in full.
+\item \textbf{Operator intent is unknown.} The four configuration changes may have been deliberate temporary measures. We show their effect on the network, not that they were mistakes.
+\item \textbf{Scoring thresholds.} The 10\%, 90\%, 75\% and seven day parameters of rule S3 are starting points chosen by hand on the full record; the proposed work will choose thresholds on 2019 to 2023 and test on 2024 to 2026.
+\item \textbf{Top tier only.} The blocking set recomputation considers the transitive quorum set and ignores validators outside it.
+\item \textbf{Analysis backend.} Radar's analyzer changed over the period (its own code, then \toolname{fbas\_analyzer}, now \toolname{python-fbas}). Our independent recomputation covers the four configuration events; the degradation series still relies on Radar's figures.
+\item \textbf{No per event public record.} Apart from 6 April 2021 we found no public report for any of these events, so the data are the only evidence.
+\end{itemize}
+
+\section{Implications for the proposed work}
+The findings point to two concrete pieces of work, both narrower than the original proposal, and one measured question.
+\begin{enumerate}[nosep,leftmargin=1.6em]
+\item \textbf{A complete longitudinal study.} Classify every quorum set change in the seven year record by its effect on network wide margins, separating configuration changes from reachability effects, reconstruct each degradation period in full, and release the dataset and scripts.
+\item \textbf{A check before the change.} Given a proposed quorum set and the current network state, report the network wide minimal blocking and splitting sets that would result, built on \toolname{python-fbas}~\cite{pythonfbas}. The four cases above are its first test set; the expansion of the tier 1 set toward thirteen organizations, in which each operator updates its own quorum set independently~\cite{sdf2025}, is its first live use. The same analysis can evaluate alternatives to the current threshold rule and connect to the theory of reconfigurable heterogeneous quorum systems~\cite{li2024}.
+\item \textbf{An early warning signal at organization level}, scored for lead time, precision and recall as in Table~\ref{tab:score}, with the margin itself as an input, and reported whether or not it turns out to be useful.
+\end{enumerate}
+
+\begin{thebibliography}{99}
+\setlength{\itemsep}{1pt}
+\bibitem{radar} OBSRVR Radar (formerly Stellarbeat). \url{https://radar.withobsrvr.com}; source: \url{https://github.com/withObsrvr/stellarbeat}
+\bibitem{florian2022} M.~Florian, S.~Henningsen, C.~Ndolo, B.~Scheuermann. The Sum of Its Parts: Analysis of Federated Byzantine Agreement Systems. Distributed Computing, 35(5):399--417, 2022.
+\bibitem{configuring} Stellar Docs. Configuring a validator. \url{https://developers.stellar.org/docs/validators/admin-guide/configuring}
+\bibitem{monitoring} Stellar Docs. Monitoring. \url{https://developers.stellar.org/docs/validators/admin-guide/monitoring}
+\bibitem{sdf2021} Stellar Development Foundation. Statement on halted SDF validators, April 2021. \url{https://stellar.org/press-releases/statement-on-halted-sdf-validators}
+\bibitem{stellarbeat2021} Stellarbeat. February 2021 release notes: simulation mode and network analysis. \url{https://medium.com/stellarbeatio/stellarbeat-io-february-2021-release-notes-c685c3069ee2}
+\bibitem{pythonfbas} G.~Losa. python-fbas. \url{https://github.com/nano-o/python-fbas}
+\bibitem{sdf2025} J.~Rice. Decentralization, double time. Stellar Development Foundation, July 2025. \url{https://stellar.org/blog/developers/decentralization-double-time}
+\bibitem{li2024} X.~Li, M.~Lesani. Reconfigurable Heterogeneous Quorum Systems. arXiv:2304.02156; brief announcement, DISC 2024.
+\end{thebibliography}
+
+\end{document}

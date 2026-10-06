@@ -21,7 +21,7 @@ Steps
        S2  the organization below 99% on at least 3 of the trailing 7 days
        S3  any validator at 10% or less for the whole day, or the organization below 90%
      Outcomes:
-       OUTAGE   the organization below 50% for a day while in the top tier
+       OUTAGE   the organization below 75% for a day (six hours or more down) while in the top tier
        REMOVAL  the organization leaves the top tier (last day of membership, if before data end)
      Signal days are merged into episodes (gap of 7 days or less). For each signal and each
      window W in {30, 90, 180, 365} days: precision = share of episodes followed by an outcome of
@@ -56,6 +56,9 @@ FIRST_DAY = "2019-05-31"
 END_DAY = None                                             # None = today (UTC)
 WINDOWS = (30, 90, 180, 365)
 EPISODE_GAP_DAYS = 7
+OUTAGE_LEVEL = 0.75                                        # organization availability below this for a day = outage day
+MIN_LEAD = 7                                               # an episode counts as EARLY warning only if it starts this many days before the outcome
+MIN_DAYS = 30                                              # organizations in the top tier for fewer days are transient and not scored
 OFFLINE = "--offline" in sys.argv
 
 LOG = []
@@ -154,7 +157,9 @@ def step_times():
 
 
 def membership():
-    """-> orgs: {org_id: {"name", "validators": {pk: name}, "days": set of 'YYYY-MM-DD'}}"""
+    """-> orgs: {org_id: {"name", "validators": {pk: name}, "days": set of 'YYYY-MM-DD'}}
+    Organizations that share a validator public key (renamed organizations, mis-attributed validators)
+    are merged into one record."""
     times = step_times()
     log(f"{len(times)} snapshot times for membership")
     orgs, samples = {}, []
@@ -172,23 +177,70 @@ def membership():
             if not n:
                 continue
             oid = n.get("organizationId") or ("node:" + pk)
-            o = orgs.setdefault(oid, {"name": onames.get(oid, oid[:8]), "validators": {}, "days": set()})
+            o = orgs.setdefault(oid, {"name": onames.get(oid, oid[:8]), "validators": {}, "days": set(), "day_pks": {}})
             o["name"] = onames.get(oid, o["name"])
             o["validators"][pk] = n.get("name") or pk[:8]
-            present[oid] = True
-        samples.append((t[:10], set(present)))
-    # membership days: an organization is in the top tier from one sample to the next
-    samples.sort()
+            present.setdefault(oid, set()).add(pk)
+        samples.append((t, present))
+    samples.sort(key=lambda x: x[0])
+    # merge organizations that share a validator (same organization under a new id or name)
+    parent = {oid: oid for oid in orgs}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    owner = {}
+    for oid, o in orgs.items():
+        for pk in o["validators"]:
+            if pk in owner and find(owner[pk]) != find(oid):
+                parent[find(owner[pk])] = find(oid)
+            owner[pk] = oid
+    # the representative of a group is the real organization id seen most recently (never a node: id)
+    groups = {}
+    for oid in orgs:
+        groups.setdefault(find(oid), []).append(oid)
+    last_seen = {}
+    for t, present in samples:
+        for oid in present:
+            last_seen[oid] = t
+    rep = {}
+    for root, ids in groups.items():
+        realids = [i for i in ids if not i.startswith("node:")]
+        key = max(realids, key=lambda i: last_seen.get(i, "")) if realids else root
+        for i in ids:
+            rep[i] = key
+    merged = {}
+    for oid, o in orgs.items():
+        key = rep[oid]
+        m = merged.setdefault(key, {"name": orgs[key]["name"], "validators": {}, "days": set(), "day_pks": {}, "ids": []})
+        m["validators"].update(o["validators"])
+        m["ids"].append(oid)
+    msamples = []
+    for t, present in samples:
+        mp = {}
+        for oid, pks in present.items():
+            mp.setdefault(rep[oid], set()).update(pks)
+        msamples.append((t, mp))
+    samples = msamples
+    for key, m in merged.items():
+        names = [orgs[i]["name"] for i in m["ids"] if not i.startswith("node:")]
+        m["aliases"] = sorted(set(names) - {m["name"]})
+    # membership days: a day belongs to the latest sample taken at or before the end of that day
     end = datetime.strptime(END_DAY or datetime.now(timezone.utc).strftime("%Y-%m-%d"), "%Y-%m-%d")
-    for i, (d, present) in enumerate(samples):
-        d0 = datetime.strptime(d, "%Y-%m-%d")
-        d1 = datetime.strptime(samples[i + 1][0], "%Y-%m-%d") if i + 1 < len(samples) else end + timedelta(days=1)
-        cur = d0
-        while cur < d1:
-            for oid in present:
-                orgs[oid]["days"].add(cur.strftime("%Y-%m-%d"))
-            cur += timedelta(days=1)
-    return orgs, samples
+    first = datetime.strptime(samples[0][0][:10], "%Y-%m-%d")
+    cur, i = first, 0
+    while cur <= end:
+        day_end = cur.strftime("%Y-%m-%dT23:59")
+        while i + 1 < len(samples) and samples[i + 1][0] <= day_end:
+            i += 1
+        for root, pks in samples[i][1].items():
+            d = cur.strftime("%Y-%m-%d")
+            merged[root]["days"].add(d)
+            merged[root]["day_pks"][d] = pks
+        cur += timedelta(days=1)
+    return merged, samples
 
 
 # ------------------------------------------------------------------ step 2: daily availability
@@ -261,14 +313,14 @@ def build_table(orgs, node_av, org_av):
     end = END_DAY or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     table = {}
     for oid, o in orgs.items():
-        if oid.startswith("node:") or not o["days"]:
+        if oid.startswith("node:") or len(o["days"]) < MIN_DAYS:
             continue
         hist = []
         for d in daterange(min(o["days"]), min(max(o["days"]), end)):
             if d not in o["days"]:
                 continue
             oa = org_av.get(oid, {}).get(d)
-            vs = [node_av.get(pk, {}).get(d) for pk in o["validators"]]
+            vs = [node_av.get(pk, {}).get(d) for pk in o.get("day_pks", {}).get(d, o["validators"])]
             vs = [v for v in vs if v is not None]
             mn = min(vs) if vs else None
             hist.append(oa)
@@ -306,12 +358,12 @@ def outcomes(table, orgs, bad_days):
             r = table.get((oid, d))
             if not r or d in bad_days or r["org"] is None:
                 continue
-            if r["org"] < 0.5:
+            if r["org"] < OUTAGE_LEVEL:
                 if prev_out is None or days_between(prev_out, d) > EPISODE_GAP_DAYS:
                     ev.append((d, "OUTAGE"))
                 prev_out = d
         last = max(o["days"])
-        if days_between(last, end) > 3:
+        if days_between(last, end) > 3 and len(o["days"]) >= MIN_DAYS:
             ev.append((last, "REMOVAL"))
         res[oid] = ev
     return res
@@ -331,20 +383,20 @@ def episodes(table, bad_days, signal):
     return res
 
 
-def score(eps, outs, W):
-    """precision, recall, lead times for window W (days)."""
+def score(eps, outs, W, min_lead=0):
+    """precision, recall, lead times for window W (days); an episode must start at least min_lead days before the outcome."""
     n_ep = tp = 0
     for oid, lst in eps.items():
         for s, e, n in lst:
             n_ep += 1
-            if any(0 <= days_between(s, od) <= W for od, _ in outs.get(oid, [])):
+            if any(min_lead <= days_between(s, od) <= W for od, _ in outs.get(oid, [])):
                 tp += 1
     n_out = hit = 0
     leads = []
     for oid, lst in outs.items():
         for od, kind in lst:
             n_out += 1
-            prior = [s for s, e, n in eps.get(oid, []) if 0 <= days_between(s, od) <= W]
+            prior = [s for s, e, n in eps.get(oid, []) if min_lead <= days_between(s, od) <= W]
             if prior:
                 hit += 1
                 leads.append(days_between(min(prior), od))
@@ -363,7 +415,7 @@ def main():
     SNAP.mkdir(parents=True, exist_ok=True)
 
     orgs, samples = membership()
-    real = {k: v for k, v in orgs.items() if not k.startswith("node:")}
+    real = {k: v for k, v in orgs.items() if not k.startswith("node:") and v["days"]}
     log(f"{len(real)} organizations ever in the top tier")
     with open(OUT / "membership.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -397,9 +449,12 @@ def main():
         if not o["days"]:
             continue
         od = sum(1 for d in o["days"] if table.get((oid, d), {}).get("org") is not None
-                 and table[(oid, d)]["org"] < 0.5 and d not in bad)
+                 and table[(oid, d)]["org"] < OUTAGE_LEVEL and d not in bad)
         ev = "; ".join(f"{k} {d}" for d, k in outs.get(oid, [])) or "none"
-        R.append(f"| {o['name']} | {min(o['days'])} to {max(o['days'])} | {len(o['days'])} | {len(o['validators'])} | {od} | {ev} |")
+        nm = o["name"] + (f" (also {', '.join(o.get('aliases', []))})" if o.get("aliases") else "")
+        if len(o["days"]) < MIN_DAYS:
+            ev = "transient, not scored"
+        R.append(f"| {nm} | {min(o['days'])} to {max(o['days'])} | {len(o['days'])} | {len(o['validators'])} | {od} | {ev} |")
 
     R += ["", "## Scoring of the three signals", "",
           "Precision: share of signal episodes followed by an outage or removal of the same organization within W days. "
@@ -411,31 +466,38 @@ def main():
         eps = episodes(table, bad, sig)
         n_eps = sum(len(v) for v in eps.values())
         R += [f"### {sig}: {desc}", "", f"{n_eps} episodes across {len(eps)} organizations.", "",
-              "| Window W | Episodes | Followed by outcome | Precision | Outcomes | Preceded by episode | Recall | Lead time (days, median / min / max) |",
-              "|---|---|---|---|---|---|---|---|"]
-        for W in WINDOWS:
-            n_ep, tp, prec, n_out, hit, rec, leads = score(eps, outs, W)
-            lt = "-"
-            if leads:
-                s = sorted(leads)
-                lt = f"{s[len(s) // 2]} / {s[0]} / {s[-1]}"
-            R.append(f"| {W} | {n_ep} | {tp} | {pct(prec)} | {n_out} | {hit} | {pct(rec)} | {lt} |")
+              "| Window W | Min lead | Episodes | Followed by outcome | Precision | Outcomes | Preceded by episode | Recall | Lead time (days, median / min / max) |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for min_lead in (0, MIN_LEAD):
+            for W in WINDOWS:
+                n_ep, tp, prec, n_out, hit, rec, leads = score(eps, outs, W, min_lead)
+                lt = "-"
+                if leads:
+                    s = sorted(leads)
+                    lt = f"{s[len(s) // 2]} / {s[0]} / {s[-1]}"
+                R.append(f"| {W} | {min_lead} | {n_ep} | {tp} | {pct(prec)} | {n_out} | {hit} | {pct(rec)} | {lt} |")
         R.append("")
         for oid, lst in eps.items():
             for s, e, n in lst:
                 nxt = [od for od, _ in outs.get(oid, []) if days_between(s, od) >= 0]
                 ep_rows.append([sig, real[oid]["name"], s, e, n, min(nxt) if nxt else "", days_between(s, min(nxt)) if nxt else ""])
 
-    R += ["## Outcomes", "", "| Organization | Date | Kind |", "|---|---|---|"]
+    R += ["## Outcomes and the earliest signal before each (within 365 days)", "",
+          "| Organization | Date | Kind | S1 first signal, lead days | S3 first signal, lead days |", "|---|---|---|---|---|"]
+    eps1, eps3 = episodes(table, bad, "S1"), episodes(table, bad, "S3")
     for oid, lst in sorted(outs.items(), key=lambda kv: real[kv[0]]["name"]):
         for d, k in lst:
-            R.append(f"| {real[oid]['name']} | {d} | {k} |")
+            cells = []
+            for eps in (eps1, eps3):
+                prior = [st for st, e, n in eps.get(oid, []) if 0 <= days_between(st, d) <= 365]
+                cells.append(f"{min(prior)}, {days_between(min(prior), d)}" if prior else "none")
+            R.append(f"| {real[oid]['name']} | {d} | {k} | {cells[0]} | {cells[1]} |")
     R += ["", "## Notes", "",
           "- Membership is sampled once per stable configuration state, so an organization that joined and left between two samples is missed.",
           "- A REMOVAL is counted whenever an organization's last membership day is more than 3 days before the data end, whatever the reason "
           "(failure, voluntary exit, or a change of organization id in Radar). Check each against membership.csv.",
           "- Organization availability is Radar's isSubQuorumAvailableCount / crawlCount; validator availability is isValidatingCount / crawlCount.",
-          "- Thresholds (90%, 99%, 10%, 50%, 7 day gap) are starting points. The proposal should report the score of the rule finally chosen, "
+          "- Thresholds (90%, 99%, 10%, 75%, 7 day gap, 7 day minimum lead) are starting points. The proposal should report the score of the rule finally chosen, "
           "with thresholds picked on 2019-2023 and tested on 2024-2026.", ""]
     with open(OUT / "episodes.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
