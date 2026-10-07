@@ -14,6 +14,8 @@ Run them from the repository root, in this order.
 | `analysis.py` | For each configuration event, prints the quorum sets before and after, recomputes the minimal blocking set by exhaustive enumeration and runs the counterfactual (only the changed quorum sets replaced). Also the daily availability timelines of Wirex and SatoshiPay. | `mechanism/report.md`, `mechanism/timeline_*.csv` | Mechanism and counterfactual of the four configuration events (Table 1) |
 | `tier1_availability.py` | Daily availability of every organization that was ever in the top tier, membership over time, and the scoring of the early warning rules S1, S2 and S3 against verified outages and removals. `--offline` uses cached files only. | `availability/report.md`, `membership.csv`, `availability_daily.csv`, `episodes.csv` | Table 3; lead times; the share of warnings due to SatoshiPay |
 
+| `symmetric_check.py` | Exhaustive check of the symmetric top tier arithmetic cited in the grant proposal (objective O2): the automatic threshold is the same for n and n-1 organizations exactly when n = 1 (mod 3); a single operator dropping one organization lowers the network margin from f+1 to f at n = 3f+1 and not otherwise; a single validator's change leaves the organization level margin unchanged; at n = 3f+1 a replacement keeps the margin only if the newcomer is added before the old organization is removed. No data needed; runs in seconds. | prints the table and asserts the claims | O2 preliminary result in the proposal |
+
 `cases_to_add.py` holds the extra cases that were appended to `verify_case.py` and `analysis.py`
 (the thin margin periods of an hour or more and the configuration episodes attributed in October 2026).
 
