@@ -1,0 +1,42 @@
+{
+  "title": "Quorum Configuration Changes and Liveness Margin in the Stellar Network, 2019-2026: scripts, data and technical report",
+  "upload_type": "software",
+  "description": "<p>Scripts, cached data and technical report for a longitudinal analysis of the Stellar public network from May 2019 to October 2026: 1.2 million OBSRVR Radar network scans, 159 full network snapshots, and daily availability for every top tier organization. The report documents four single operator quorum set changes that lowered the liveness margin of the whole network, the organization outages and the degradation that preceded them, and a scoring of simple availability based early warning rules (precision, recall, lead time) across all top tier organizations. See README.md for which script produces which number in the report.</p>",
+  "creators": [
+    {
+      "name": "Nguyen, Tra",
+      "affiliation": "Hanoi University of Science and Technology",
+      "orcid": "0009-0000-2086-7136"
+    },
+    {
+      "name": "Nguyen, Binh Minh",
+      "affiliation": "Hanoi University of Science and Technology",
+      "orcid": "0000-0003-1328-3647"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Le, Ha Ngan",
+      "type": "DataCurator",
+      "affiliation": "Hanoi University of Science and Technology"
+    }
+  ],
+  "keywords": [
+    "Stellar",
+    "Stellar Consensus Protocol",
+    "federated Byzantine agreement",
+    "quorum systems",
+    "liveness",
+    "blockchain",
+    "network measurement"
+  ],
+  "license": "MIT",
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/lehangan/stellar_scp",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
