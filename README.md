@@ -16,10 +16,6 @@ Run them from the repository root, in this order.
 
 | `symmetric_check.py` | Exhaustive check of the symmetric top tier arithmetic cited in the grant proposal (objective O2): the automatic threshold is the same for n and n-1 organizations exactly when n = 1 (mod 3); a single operator dropping one organization lowers the network margin from f+1 to f at n = 3f+1 and not otherwise; a single validator's change leaves the organization level margin unchanged; at n = 3f+1 a replacement keeps the margin only if the newcomer is added before the old organization is removed. No data needed; runs in seconds. | prints the table and asserts the claims | O2 preliminary result in the proposal |
 
-| `counterfactual.py` | For the three single operator removals in Table 1, computes on the cached snapshots before and inside each change the nominal margin, the further failures tolerated with the removed organization already down, and with one other organization down. Shows that keeping the previous configuration cost the operator nothing in liveness while the organization it removed was down. No download needed. | prints a table | the operational counterfactual in the grant proposal (Section 2) |
-
-To reproduce Table 1 of the report from a fresh clone: `python3 full_scan.py` (downloads about 1.2 million scan records, hours), `python3 verify_case.py` (downloads the 159 snapshots), `python3 analysis.py` (recomputes the blocking sets and the counterfactual); with the cached snapshots in the repository, `python3 analysis.py` and `python3 counterfactual.py` run offline in minutes.
-
 `cases_to_add.py` holds the extra cases that were appended to `verify_case.py` and `analysis.py`
 (the thin margin periods of an hour or more and the configuration episodes attributed in October 2026).
 
