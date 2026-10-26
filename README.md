@@ -3,6 +3,7 @@
 Scripts, data and results behind the technical report `Stellar_Liveness_TechReport.pdf`
 (Tra Nguyen and Binh Minh Nguyen, Hanoi University of Science and Technology, October 2026).
 
+Version 1.2.0 adds `qi_check.py`, which recomputes quorum intersection on all 159 snapshots independently of Radar's analyzer.
 Version 1.1.0 adds `symmetric_model_proofs.pdf` (source `symmetric_model_proofs.tex`): propositions and proofs on the
 liveness margin of a symmetric top tier under reconfiguration, cited in the SDF grant proposal, with the scripts below
 that check them and recompute the proposal's Table 2.
@@ -21,6 +22,7 @@ Run them from the repository root, in this order.
 | `blockdaemon_alternatives.py` | Recomputes Blockdaemon's quorum set change of 22 May 2020 and its alternatives on the archived snapshots: the same six organizations at 4 of 6, a replacement by a synthetic newcomer added before SatoshiPay is removed, and every operator dropping SatoshiPay. Reports the margin at organization and node level, the splitting set, quorum intersection, the peer failures that block Blockdaemon, the margin with one organization down, and whether each quorum set meets stellar-core's minimum threshold. Run: `python3 blockdaemon_alternatives.py sdf_feasibility/verify/raw/snap_2020-05-21T1200.json sdf_feasibility/verify/raw/snap_2020-05-23T1200.json` | `mechanism/blockdaemon_alternatives.txt` | Table 2 of the proposal |
 | `current_tier_removals.py` | On the snapshot of 1 October 2026, checks that the top tier is symmetric and recomputes the organization margin when one, two or three validators of any operator drop any other organization. Run: `python3 current_tier_removals.py sdf_feasibility/verify/raw/snap_2026-10-01T2300.json` | `mechanism/current_tier_removals.txt` | O2 of the proposal, "Computed, not proved" |
 | `symmetric_props_check.py` | Checks the propositions proved in `symmetric_model_proofs.pdf`: exhaustively for threshold sharing and partial updates; for add before remove, every stage assignment at organization level and random validator level samples. No data needed; about one minute. | `mechanism/symmetric_props_check.txt` | O2 of the proposal, items (a) to (c) |
+| `qi_check.py` | Independent check, on every archived snapshot, of quorum intersection (a z3 search for two disjoint nonempty quorums over the transitive quorum set reached from SDF's validators) and of the organization level blocking set, nominal and discounting validators not validating, next to the values Radar recorded. Needs `pip install z3-solver`. Run: `python3 qi_check.py sdf_feasibility/verify/raw/snap_*.json > sdf_feasibility/verify/qi_results.csv` | `verify/qi_results.csv` | Safety paragraph of the proposal: quorum intersection holds in all 159 snapshots, and the transitive quorum set matches Radar's in all 159 |
 
 `cases_to_add.py` holds the extra cases that were appended to `verify_case.py` and `analysis.py`
 (the thin margin periods of an hour or more and the configuration episodes attributed in October 2026).
