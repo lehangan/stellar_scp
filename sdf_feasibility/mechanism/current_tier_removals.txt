@@ -1,0 +1,6 @@
+snapshot 2026-10-01T22:57:29.805Z: 30 validators in 10 organizations (OBSRVR 3, Range 3, LOBSTR 3, Franklin Templeton 3, Blockdaemon Inc. 3, Stellar Development Foundation 3, MoneyGram 3, Figure Certificate Company 3, Creit Technologies LLP 3, Public Node 3)
+distinct quorum sets in the top tier: 1; first one: threshold 7 of 10 entries, inner thresholds [2]
+organization margin as archived: 4
+  1 of an operator's validators drop one organization: margin 4 organizations in 90 of 90 operator/organization pairs
+  2 of an operator's validators drop one organization: margin 3 organizations in 90 of 90 operator/organization pairs
+  all of an operator's validators drop one organization: margin 3 organizations in 90 of 90 operator/organization pairs

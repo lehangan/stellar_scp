@@ -3,6 +3,10 @@
 Scripts, data and results behind the technical report `Stellar_Liveness_TechReport.pdf`
 (Tra Nguyen and Binh Minh Nguyen, Hanoi University of Science and Technology, October 2026).
 
+Version 1.1.0 adds `symmetric_model_proofs.pdf` (source `symmetric_model_proofs.tex`): propositions and proofs on the
+liveness margin of a symmetric top tier under reconfiguration, cited in the SDF grant proposal, with the scripts below
+that check them and recompute the proposal's Table 2.
+
 All data come from the public API of OBSRVR Radar (formerly Stellarbeat), `https://radar.withobsrvr.com/api`.
 Every script is standard-library Python 3 and caches what it downloads, so a second run is instant.
 Run them from the repository root, in this order.
@@ -13,8 +17,10 @@ Run them from the repository root, in this order.
 | `verify_case.py` | Fetches full network snapshots before and inside each event and reports which validators were down, which quorum sets changed and which organizations joined or left the top tier. | `verify/report.md`, `verify/cases.csv`, `verify/raw/snap_*.json` | Attribution of every event (Tables 1 and 2); SatoshiPay's removal on 15 July 2026; the August 2026 expansion; the 14 September 2023 crawler outage |
 | `analysis.py` | For each configuration event, prints the quorum sets before and after, recomputes the minimal blocking set by exhaustive enumeration and runs the counterfactual (only the changed quorum sets replaced). Also the daily availability timelines of Wirex and SatoshiPay. | `mechanism/report.md`, `mechanism/timeline_*.csv` | Mechanism and counterfactual of the four configuration events (Table 1) |
 | `tier1_availability.py` | Daily availability of every organization that was ever in the top tier, membership over time, and the scoring of the early warning rules S1, S2 and S3 against verified outages and removals. `--offline` uses cached files only. | `availability/report.md`, `membership.csv`, `availability_daily.csv`, `episodes.csv` | Table 3; lead times; the share of warnings due to SatoshiPay |
-
 | `symmetric_check.py` | Exhaustive check of the symmetric top tier arithmetic cited in the grant proposal (objective O2): the automatic threshold is the same for n and n-1 organizations exactly when n = 1 (mod 3); a single operator dropping one organization lowers the network margin from f+1 to f at n = 3f+1 and not otherwise; a single validator's change leaves the organization level margin unchanged; at n = 3f+1 a replacement keeps the margin only if the newcomer is added before the old organization is removed. No data needed; runs in seconds. | prints the table and asserts the claims | O2 preliminary result in the proposal |
+| `blockdaemon_alternatives.py` | Recomputes Blockdaemon's quorum set change of 22 May 2020 and its alternatives on the archived snapshots: the same six organizations at 4 of 6, a replacement by a synthetic newcomer added before SatoshiPay is removed, and every operator dropping SatoshiPay. Reports the margin at organization and node level, the splitting set, quorum intersection, the peer failures that block Blockdaemon, the margin with one organization down, and whether each quorum set meets stellar-core's minimum threshold. Run: `python3 blockdaemon_alternatives.py sdf_feasibility/verify/raw/snap_2020-05-21T1200.json sdf_feasibility/verify/raw/snap_2020-05-23T1200.json` | `mechanism/blockdaemon_alternatives.txt` | Table 2 of the proposal |
+| `current_tier_removals.py` | On the snapshot of 1 October 2026, checks that the top tier is symmetric and recomputes the organization margin when one, two or three validators of any operator drop any other organization. Run: `python3 current_tier_removals.py sdf_feasibility/verify/raw/snap_2026-10-01T2300.json` | `mechanism/current_tier_removals.txt` | O2 of the proposal, "Computed, not proved" |
+| `symmetric_props_check.py` | Checks the propositions proved in `symmetric_model_proofs.pdf`: exhaustively for threshold sharing and partial updates; for add before remove, every stage assignment at organization level and random validator level samples. No data needed; about one minute. | `mechanism/symmetric_props_check.txt` | O2 of the proposal, items (a) to (c) |
 
 `cases_to_add.py` holds the extra cases that were appended to `verify_case.py` and `analysis.py`
 (the thin margin periods of an hour or more and the configuration episodes attributed in October 2026).

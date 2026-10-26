@@ -1,0 +1,84 @@
+before: 2020-05-21T11:57:16.058Z   during: 2020-05-23T11:57:43.300Z
+top tier before: 23 validators; Blockdaemon validators: 3; SatoshiPay validators: 3
+Blockdaemon quorum set before: 5 of 7 [Blockdaemon Inc., COINQVEST Limited, Keybase, LOBSTR, SatoshiPay, Stellar Development Foundation, Wirex Limited]
+Blockdaemon quorum set during: 5 of 6 [Blockdaemon Inc., COINQVEST Limited, Keybase, LOBSTR, Stellar Development Foundation, Wirex Limited]
+all Blockdaemon validators share the 'during' quorum set: True
+'during' set = 'before' set without SatoshiPay, threshold kept at 5 : True
+
+A0 before the change (5 of 7, trusts SatoshiPay)
+   top tier 23/7 (validators/organizations); margin orgs|nodes 3|6; splitting set 3 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 3 (with SatoshiPay down: 2 more)
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 0
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   2
+      Keybase                             2
+      LOBSTR                              2
+      SatoshiPay                          2
+      Stellar Development Foundation      2
+      Wirex Limited                       2
+A1 actual change (5 of 6 without SatoshiPay)
+   top tier 23/7 (validators/organizations); margin orgs|nodes 2|4; splitting set 3 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 2 (with SatoshiPay down: 2 more)
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 0
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   1
+      Keybase                             1
+      LOBSTR                              1
+      SatoshiPay                          2
+      Stellar Development Foundation      1
+      Wirex Limited                       1
+A2 same six, explicit 4 of 6
+   top tier 23/7 (validators/organizations); margin orgs|nodes 3|6; splitting set 3 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 3 (with SatoshiPay down: 2 more)
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 3
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   2
+      Keybase                             2
+      LOBSTR                              2
+      SatoshiPay                          2
+      Stellar Development Foundation      2
+      Wirex Limited                       2
+R1 replace, step 1: add Z first (6 of 8)
+   top tier 26/8 (validators/organizations); margin orgs|nodes 3|6; splitting set 3 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 3 (with SatoshiPay down: 2 more)
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 0
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   2
+      Keybase                             2
+      LOBSTR                              2
+      Newcomer Z (synthetic)              2
+      SatoshiPay                          2
+      Stellar Development Foundation      2
+      Wirex Limited                       2
+R2 replace, step 2: then remove SatoshiPay (5 of 7 with Z)
+   top tier 26/8 (validators/organizations); margin orgs|nodes 3|6; splitting set 3 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 3 (with SatoshiPay down: 2 more)
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 0
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   2
+      Keybase                             2
+      LOBSTR                              2
+      Newcomer Z (synthetic)              2
+      SatoshiPay                          2
+      Stellar Development Foundation      2
+      Wirex Limited                       2
+A3 all operators drop SatoshiPay, automatic 5 of 6
+   top tier 20/6 (validators/organizations); margin orgs|nodes 2|4; splitting set 4 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 2
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 0
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    1
+      COINQVEST Limited                   1
+      Keybase                             1
+      LOBSTR                              1
+      Stellar Development Foundation      1
+      Wirex Limited                       1
+A4 all operators drop SatoshiPay, 4 of 6
+   top tier 20/6 (validators/organizations); margin orgs|nodes 3|6; splitting set 2 orgs; quorum intersection True; peer organizations whose failure blocks Blockdaemon: 3
+   validators below stellar-core's minimum threshold (need UNSAFE_QUORUM): 20
+   organization margin left with one organization down:
+      Blockdaemon Inc.                    2
+      COINQVEST Limited                   2
+      Keybase                             2
+      LOBSTR                              2
+      Stellar Development Foundation      2
+      Wirex Limited                       2

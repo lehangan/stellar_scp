@@ -1,0 +1,86 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsthm}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\pagestyle{plain}
+
+\begin{document}
+
+{\Large\bfseries Margins of a symmetric top tier under reconfiguration: propositions and proofs}
+
+Tra Nguyen \quad Binh Minh Nguyen\\
+Hanoi University of Science and Technology\\
+October 2026. Supplement to \emph{Quorum Configuration Changes and Liveness Margin in the Stellar Network, 2019--2026}; checks in \texttt{symmetric\_props\_check.py}.
+
+\section*{Model}
+
+A top tier consists of organizations, each running $k$ validators. An organization \emph{counts} for a quorum when at least $m=\lfloor k/2\rfloor+1$ of its validators are in it (the majority inner threshold of a three validator organization is two of three). Let $c=k-m+1$, the number of failed validators that leave an organization unable to count ($c=2$ for $k=3$, $c=3$ for $k=5$). Every validator $v$ lists a set $M_v$ of organizations and requires that at least $t(|M_v|)$ of them count, where
+\[
+t(s)=s-f(s),\qquad f(s)=\lfloor (s-1)/3\rfloor ,
+\]
+the threshold that \texttt{stellar-core} assigns to a group of $s$ organizations of the same quality. Fix a root organization $r$; the top tier $T$ is the set of organizations reachable from $r$ through the lists (in Proposition~\ref{prop:order}, $r\in L_0\cap L_1$). All sets below are taken inside $T$. A \emph{quorum} is a nonempty set $Q$ of validators such that every $v\in Q$ has at least $t(|M_v|)$ organizations of $M_v$ counting in $Q$. Failures are crashes: a set $F$ of validators is \emph{blocking} if the validators outside $F$ contain no quorum. The \emph{node margin} is the smallest size of a blocking set; the \emph{organization margin} is the smallest number of organizations whose validators, all failing, form a blocking set. A configuration is \emph{symmetric} when $M_v=T$ for every $v$; $n$ denotes $|T|$.
+
+Quorums are closed under union, so the validators outside $F$ contain a quorum exactly when the greatest such quorum is nonempty. All results concern configurations, not the liveness of an SCP instance that runs while a configuration changes.
+
+\begin{lemma}[witness]\label{lem:witness}
+Let $F$ be a set of failed validators and $D$ the organizations with at least $c$ validators in $F$. If $T\setminus D\neq\emptyset$ and $|M_v\setminus D|\ge t(|M_v|)$ for every validator $v\notin F$ of an organization in $T\setminus D$, then $F$ is not blocking.
+\end{lemma}
+\begin{proof}
+Let $Q$ be the validators outside $F$ of the organizations in $T\setminus D$. Each such organization has at most $c-1$ failed validators, so at least $k-c+1=m$ of its validators are in $Q$ and it counts. Every $v\in Q$ therefore sees at least $|M_v\setminus D|\ge t(|M_v|)$ counting organizations, so $Q$ is a quorum, and it avoids $F$.
+\end{proof}
+
+The organization level version is the same with $D$ the set of failed organizations.
+
+\begin{proposition}[threshold sharing]\label{prop:share}
+$t(s)=t(s-1)$ exactly when $s\equiv 1 \pmod 3$; otherwise $t(s)=t(s-1)+1$.
+\end{proposition}
+\begin{proof}
+$t(s)-t(s-1)=1-(f(s)-f(s-1))$, and $f(s)-f(s-1)$ is $1$ when $3$ divides $s-1$ and $0$ otherwise.
+\end{proof}
+
+\begin{proposition}[symmetric margins]\label{prop:sym}
+A symmetric top tier of $n$ organizations has organization margin $f(n)+1$ and node margin $(f(n)+1)c$.
+\end{proposition}
+\begin{proof}
+Failing $c$ validators in each of $f(n)+1$ organizations leaves every validator at most $n-f(n)-1=t(n)-1$ organizations that can count, so no quorum remains. Conversely, if $|F|<(f(n)+1)c$ then $|D|\le f(n)$ and $|T\setminus D|\ge n-f(n)=t(n)$, so Lemma~\ref{lem:witness} applies. The organization level argument is identical with whole organizations.
+\end{proof}
+
+\begin{proposition}[partial updates]\label{prop:partial}
+Start from a symmetric top tier of $n\ge 4$ organizations. Let $j$ of the $k$ validators of one organization $A$ drop one organization $X\neq A$ from their lists, all other lists unchanged. If $n\equiv1\pmod 3$, the node margin becomes $(f(n)+1)c-\min(j,c)$, and the organization margin becomes $f(n)$ if $j\ge c$ and stays $f(n)+1$ if $j<c$. If $n\not\equiv 1\pmod 3$, both margins are unchanged.
+\end{proposition}
+\begin{proof}
+Case $n\equiv 1\pmod 3$, so $t(n-1)=t(n)$ by Proposition~\ref{prop:share} and $f(n)\ge 1$. A changed validator lists $n-1$ organizations and needs $t(n)$ of them.
+
+\emph{Upper bounds.} Choose $f(n)$ organizations in $T\setminus\{A,X\}$ (there are $n-2\ge f(n)$) and fail $c$ validators in each. A changed validator then has at most $n-1-f(n)=t(n)-1$ organizations that can count, so it is in no quorum. If $j\ge c$, at most $k-j\le m-1$ validators of $A$ remain that can be in a quorum, so $A$ cannot count, and every unchanged validator has at most $n-f(n)-1=t(n)-1$ organizations that can count: $f(n)c$ failures block. If $j<c$, fail in addition $c-j$ unchanged validators of $A$, which leaves $A$ with $m-1$ usable validators and gives the same conclusion with $f(n)c+c-j$ failures. At organization level, if $j\ge c$ the $f(n)$ organizations alone block.
+
+\emph{Lower bounds.} Let $|F|<(f(n)+1)c-\min(j,c)$. Then $|D|\le f(n)$. If $|D|\le f(n)-1$, every list keeps at least $n-1-(f(n)-1)=t(n)$ organizations outside $D$, and Lemma~\ref{lem:witness} applies. If $|D|=f(n)$, the validators of $D$ account for at least $f(n)c$ failures, so at most $r<c-\min(j,c)$ failures lie outside $D$; this is impossible when $j\ge c$, so $j<c$ and $r\le c-j-1$. If $A\in D$, take $Q$ as in Lemma~\ref{lem:witness}: its members are unchanged validators, each seeing $n-f(n)=t(n)$ organizations outside $D$. If $A\notin D$, take $Q$ as in the lemma but without the changed validators of $A$: $A$ keeps at least $(k-j)-r\ge k-c+1=m$ unchanged validators in $Q$ and counts, and every member of $Q$ is unchanged and sees $t(n)$ counting organizations. In both cases $F$ is not blocking. At organization level with $j<c$, after $f(n)$ organizations fail the unchanged validators of the others still form a quorum, in which $A$ counts through its $k-j\ge m$ unchanged validators and every member sees $n-f(n)=t(n)$ counting organizations; so $f(n)+1$ are needed, and they suffice as in Proposition~\ref{prop:sym}. With $j\ge c$, $f(n)-1$ failed organizations cannot block by Lemma~\ref{lem:witness}.
+
+Case $n\not\equiv1\pmod 3$: then $t(n-1)=t(n)-1=(n-1)-f(n)$, so every list $M_v$ satisfies $|M_v\setminus D|\ge t(|M_v|)$ whenever $|D|\le f(n)$, and Lemma~\ref{lem:witness} gives the lower bounds of Proposition~\ref{prop:sym}. For the upper bounds, fail $c$ validators in each of $f(n)+1$ organizations other than $X$ (possible since $n-1\ge f(n)+1$): an unchanged validator then sees at most $t(n)-1$ organizations that can count and a changed one at most $(n-1)-f(n)-1=t(n-1)-1$, so no quorum remains; the organization level is the same with whole organizations.
+\end{proof}
+
+\begin{proposition}[add before remove]\label{prop:order}
+Let $L_0,L_1$ be sets of organizations with $n_0=|L_0|$, $n_1=|L_1|$ and $g=\min(f(n_0),f(n_1))$. If every validator's list satisfies $L_0\subseteq M_v\subseteq L_0\cup L_1$ or $L_1\subseteq M_v\subseteq L_0\cup L_1$, the node margin is at least $(g+1)c$ and the organization margin at least $g+1$.
+\end{proposition}
+\begin{proof}
+Every list has at least $\min(n_0,n_1)$ elements and $f$ is nondecreasing, so $f(|M_v|)\ge g$. If $|F|<(g+1)c$ then $|D|\le g$, hence $|M_v\setminus D|\ge |M_v|-f(|M_v|)=t(|M_v|)$ for every $v$, and Lemma~\ref{lem:witness} applies. The organization level argument is identical.
+\end{proof}
+
+\emph{Consequence for interleavings.} Suppose every validator in $T$, including those of joining and departing organizations, adds the organizations of $L_1\setminus L_0$ before it removes any of $L_0\setminus L_1$, one organization at a time, at any moment and independently of every other validator, and that the validators of joining organizations start from a list $M$ with $L_1\subseteq M\subseteq L_0\cup L_1$. Every list then contains $L_0$ or $L_1$ and lies inside $L_0\cup L_1$, so every reachable configuration satisfies the hypothesis of Proposition~\ref{prop:order}; with $r\in L_0\cap L_1$, the endpoints are the symmetric configurations on $L_0$ and on $L_1$, and by Proposition~\ref{prop:sym} the symmetric endpoints have margins $(f(n_0)+1)c$ and $(f(n_1)+1)c$ ($f(n_0)+1$ and $f(n_1)+1$ organizations). Hence every interleaving keeps both margins at or above the smaller endpoint. Removing first does not have this property: at $n\equiv1\pmod 3$, one operator that removes $X$ before adding its replacement passes through the configuration of Proposition~\ref{prop:partial} with $j=k$ and loses one organization of margin. The hypothesis on joining organizations cannot be dropped: at $n=4$, with every old organization listing $L_0\cup L_1$ and a newcomer listing only itself and two old organizations, one failed organization blocks, against two at both endpoints.
+
+\emph{Observed cases.} At each of the observed single operator changes the top tier had seven organizations ($n=7$, $f(n)=2$). Proposition~\ref{prop:partial} with $k=3$, $c=2$ gives $3|6\to2|4$ for $j=3$ (Blockdaemon, May 2020; SDF, April 2021) and $3|6\to3|5$ for $j=1$ (Franklin Templeton, October 2024), the values recomputed on the archived configurations. Those configurations are not symmetric in every respect (LOBSTR runs five validators), but the cheapest organizations to defeat run three, which is why the values agree. For the expansion of August 2026 from seven to ten organizations, carried out by additions, Proposition~\ref{prop:order} with $g=2$ says that in the model the margin cannot fall below three organizations; Radar recorded three until the last operators raised their thresholds, then four. The configuration archived on 1 October 2026 is exactly the symmetric model with $n=10$, $k=3$ (one quorum set, seven of ten, for all thirty validators); on it \texttt{current\_tier\_removals.py} finds, for each of the 90 pairs of an operator and another organization, margin four if one of the operator's validators drops that organization and three if two or three do, as Proposition~\ref{prop:partial} predicts.
+
+\section*{Scope}
+The propositions assume a symmetric top tier (every list is all of $T$ at the endpoints), the same number of validators in every organization with a majority inner threshold, the automatic threshold rule and crash failures. They do not cover inner sets that wrap a top tier organization together with others (LOBSTR, 13 April 2021), top tiers whose members list different organizations other than as in Proposition~\ref{prop:order}, organizations of different sizes beyond the remark above, splitting sets (Byzantine failures), or the liveness of SCP while a change is in progress.
+
+\section*{Checks}
+\texttt{symmetric\_props\_check.py} (standard library Python) verifies Proposition~\ref{prop:share} for $2\le s<1000$, and Propositions~\ref{prop:sym} and~\ref{prop:partial} exhaustively at organization and node level for every $j$, for $4\le n\le 13$ with $k=3$ and $4\le n\le 7$ with $k=4,5$, by enumerating failure patterns (blocking is monotone, so it suffices to show that some pattern of the stated size blocks and none of size one less does). For Proposition~\ref{prop:order}, all with $k=3$, it checks every configuration at organization level in which each organization is at some stage of an add before remove replacement of one organization, at $4\le n\le 10$, and of the expansion from seven to ten organizations with the newcomers added in one fixed order; and, at node level, 3,000 random validator by validator configurations at $n=4$ and 200 at $n=7$ (samples, not exhaustive). It asserts that removing first loses one organization exactly at $n=4,7,10$, and that the newcomer example above has margin one.
+
+\end{document}

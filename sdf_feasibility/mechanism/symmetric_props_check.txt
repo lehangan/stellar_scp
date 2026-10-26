@@ -1,0 +1,33 @@
+P1 holds for 2 <= s < 1000
+P2, P3 (organization and node margins, exhaustive over failure patterns):
+  k=3 n=4: symmetric 2|4; partial drops j=1..3 as predicted
+  k=3 n=5: symmetric 2|4; partial drops j=1..3 as predicted
+  k=3 n=6: symmetric 2|4; partial drops j=1..3 as predicted
+  k=3 n=7: symmetric 3|6; partial drops j=1..3 as predicted
+  k=3 n=8: symmetric 3|6; partial drops j=1..3 as predicted
+  k=3 n=9: symmetric 3|6; partial drops j=1..3 as predicted
+  k=3 n=10: symmetric 4|8; partial drops j=1..3 as predicted
+  k=3 n=11: symmetric 4|8; partial drops j=1..3 as predicted
+  k=3 n=12: symmetric 4|8; partial drops j=1..3 as predicted
+  k=3 n=13: symmetric 5|10; partial drops j=1..3 as predicted
+  k=4 n=4: symmetric 2|4; partial drops j=1..4 as predicted
+  k=4 n=5: symmetric 2|4; partial drops j=1..4 as predicted
+  k=4 n=6: symmetric 2|4; partial drops j=1..4 as predicted
+  k=4 n=7: symmetric 3|6; partial drops j=1..4 as predicted
+  k=5 n=4: symmetric 2|6; partial drops j=1..5 as predicted
+  k=5 n=5: symmetric 2|6; partial drops j=1..5 as predicted
+  k=5 n=6: symmetric 2|6; partial drops j=1..5 as predicted
+  k=5 n=7: symmetric 3|9; partial drops j=1..5 as predicted
+P4 (add before remove keeps the smaller endpoint):
+  replacement at n=4: 60 organization level states, all >= 2; remove first gives 1
+  replacement at n=5: 90 organization level states, all >= 2; remove first gives 2
+  replacement at n=6: 126 organization level states, all >= 2; remove first gives 2
+  replacement at n=7: 168 organization level states, all >= 3; remove first gives 2
+  replacement at n=8: 216 organization level states, all >= 3; remove first gives 3
+  replacement at n=9: 270 organization level states, all >= 3; remove first gives 3
+  replacement at n=10: 330 organization level states, all >= 4; remove first gives 3
+  expansion 7 -> 10, newcomers added one at a time: 120 states, all >= 3
+  newcomer listing only itself and two organizations at n=4: margin 1 (endpoints 2), so the hypothesis on newcomers is needed
+  replacement at n=4, validator level: 3000 random states, none blocked by 3 validators
+  replacement at n=7, validator level: 200 random states, none blocked by 5 validators
+all checks passed in 30 s
